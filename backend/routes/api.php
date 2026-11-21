@@ -12,6 +12,7 @@ use App\Http\Controllers\MerchantCategoryController;
 use App\Http\Controllers\MerchantOrderController;
 use App\Http\Controllers\MerchantProductController;
 use App\Http\Controllers\MerchantStoreController;
+use App\Http\Controllers\MerchantZoneFeeController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\StoreController;
 use Illuminate\Support\Facades\Route;
@@ -65,10 +66,12 @@ Route::middleware('firebase.auth')->group(function () {
         Route::put('/stores/{store}', [MerchantStoreController::class, 'update']);
         Route::post('/stores/{store}/upload-image', [MerchantStoreController::class, 'uploadImage']);
 
-        // Branches
+        // Branches & Zone Pricing (Store Owner Priced)
         Route::get('/stores/{store}/branches', [MerchantBranchController::class, 'index']);
         Route::post('/stores/{store}/branches', [MerchantBranchController::class, 'store']);
         Route::put('/stores/{store}/branches/{branch}', [MerchantBranchController::class, 'update']);
+        Route::get('/stores/{store}/branches/{branch}/zones', [MerchantZoneFeeController::class, 'index']);
+        Route::put('/stores/{store}/branches/{branch}/zones', [MerchantZoneFeeController::class, 'update']);
 
         // Categories
         Route::get('/stores/{store}/categories', [MerchantCategoryController::class, 'index']);

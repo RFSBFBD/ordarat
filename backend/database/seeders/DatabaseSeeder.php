@@ -10,6 +10,7 @@ use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
 use App\Models\Product;
 use App\Models\Store;
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\Zone;
 use Illuminate\Database\Seeder;
@@ -199,5 +200,9 @@ class DatabaseSeeder extends Seeder
             'to_status' => 'new',
             'note' => 'تم إنشاء الطلب من قبل العميل',
         ]);
+
+        SystemSetting::set('subscription_contact_number', '+201055370118');
+        SystemSetting::set('unaccepted_order_alert_minutes', 10);
+        SystemSetting::set('order_rate_limit_per_minute', 5);
     }
 }

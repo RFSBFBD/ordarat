@@ -62,6 +62,13 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         >
           الفروع ومواعيد العمل
         </button>
+        <button
+          class="tab-btn"
+          [class.active]="activeTab() === 'zones'"
+          (click)="activeTab.set('zones')"
+        >
+          مناطق وأسعار التوصيل
+        </button>
       </div>
 
       <!-- TAB 1: ORDERS QUEUE -->
@@ -275,6 +282,61 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                 b.is_active ? 'فرع نشط' : 'فرع مغلق مؤقتاً'
               }}</span>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: ZONE PRICING (STORE OWNER DECISION) -->
+      <div *ngIf="activeTab() === 'zones'">
+        <div class="card-section">
+          <div class="section-top">
+            <div>
+              <h3>تعريف وتعديل أسعار التوصيل لمناطق قنا</h3>
+              <p class="subtitle">
+                صاحب المتجر هو المسؤول عن تحديد قيمة التوصيل والمناطق المشمولة لكل فرع
+              </p>
+            </div>
+            <button class="btn btn-primary" (click)="saveZoneFees()">حفظ أسعار التوصيل</button>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>المنطقة في مدينة قنا</th>
+                  <th>حالة التغطية</th>
+                  <th>سعر التوصيل (ج.م)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let z of branchZones">
+                  <td>
+                    <strong>{{ z.name }}</strong>
+                  </td>
+                  <td>
+                    <button
+                      class="badge-toggle-btn"
+                      [class.available]="z.is_served"
+                      [class.finished]="!z.is_served"
+                      (click)="z.is_served = !z.is_served"
+                    >
+                      {{ z.is_served ? 'مشمولة بالتوصيل' : 'غير مغطاة ⚠️' }}
+                    </button>
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      step="0.5"
+                      [(ngModel)]="z.fee"
+                      [disabled]="!z.is_served"
+                      class="text-input"
+                      style="max-width: 120px;"
+                    />
+                    ج.م
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -792,7 +854,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
 export class MerchantDashboardComponent {
   protected readonly t = AR_TRANSLATIONS;
 
-  activeTab = signal<'orders' | 'products' | 'branches'>('orders');
+  activeTab = signal<'orders' | 'products' | 'branches' | 'zones'>('orders');
   soundEnabled = signal<boolean>(true);
   showNewProductModal = signal<boolean>(false);
   selectedOrderForRejection = signal<any | null>(null);
@@ -829,6 +891,17 @@ export class MerchantDashboardComponent {
       is_active: true,
     },
   ];
+
+  branchZones = [
+    { id: 1, name: 'وسط البلد', fee: 10.0, is_served: true },
+    { id: 2, name: 'المعنا', fee: 15.0, is_served: true },
+    { id: 3, name: 'الجامعة ومساكن الشباب', fee: 15.0, is_served: true },
+    { id: 4, name: 'حي المصالح والشوؤن', fee: 12.0, is_served: true },
+  ];
+
+  saveZoneFees() {
+    alert('تم حفظ وتحديث أسعار التوصيل لمناطق قنا بنجاح');
+  }
 
   products = [
     {

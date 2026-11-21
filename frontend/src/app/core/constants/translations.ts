@@ -34,6 +34,8 @@ export const AR_TRANSLATIONS = {
       title: 'عايز تشترك في الخدمة؟ كلمنا على الرقم ده',
       callBtn: 'اتصل بنا',
       whatsappBtn: 'واتساب',
+      number: '+201055370118',
+      numberDisplay: '01055370118',
       numberPending: 'رقم الاشتراك هيتضاف قريب',
     },
     storesList: {
@@ -246,7 +248,13 @@ export const AR_TRANSLATIONS = {
       confirmReasonPrompt: 'اكتب سبب الإجراء:',
     },
     zones: {
-      pendingNotice: 'تعريف المناطق في انتظار قرار صاحب المشروع',
+      title: 'مناطق وتكاليف التوصيل',
+      merchantPricingNotice:
+        'وفقاً للقرار المعتمد: يحدد صاحب كل مطعم أو بقالة رسوم التوصيل الخاصة بفروعه لكل منطقة',
+      zoneName: 'اسم المنطقة',
+      deliveryFee: 'سعر التوصيل',
+      isServed: 'مشمولة بالتوصيل',
+      saveFeesBtn: 'حفظ أسعار التوصيل',
     },
     settings: {
       title: 'إعدادات المنصة',

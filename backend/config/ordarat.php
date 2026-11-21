@@ -21,8 +21,8 @@ return [
     | Must remain empty or use placeholder until explicitly supplied.
     |
     */
-    'subscription_contact_number' => env('SUBSCRIPTION_CONTACT_NUMBER', ''),
-    'subscription_whatsapp_number' => env('SUBSCRIPTION_WHATSAPP_NUMBER', ''),
+    'subscription_contact_number' => env('SUBSCRIPTION_CONTACT_NUMBER', '+201055370118'),
+    'subscription_whatsapp_number' => env('SUBSCRIPTION_WHATSAPP_NUMBER', '+201055370118'),
 
     /*
     |--------------------------------------------------------------------------

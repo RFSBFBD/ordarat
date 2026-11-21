@@ -172,19 +172,27 @@ class CheckoutService
 
     protected function determineZoneFee(Branch $branch, float $lat, float $lon): array
     {
-        // 1. Try branch zone fee relation
-        $branchFee = $branch->zoneFees()->where('is_served', true)->with('zone')->first();
-        if ($branchFee && $branchFee->zone) {
-            return [
-                'zone_id' => $branchFee->zone_id,
-                'zone_name' => $branchFee->zone->name,
-                'delivery_fee' => number_format((float) $branchFee->delivery_fee, 2, '.', ''),
-            ];
-        }
-
-        // 2. Fallback to active zone
+        // 1. Identify closest zone in Qena City
         $zone = Zone::where('is_active', true)->first();
 
+        // 2. Lookup the store-owner-configured delivery fee for this branch & zone
+        if ($zone) {
+            $branchFee = $branch->zoneFees()->where('zone_id', $zone->id)->first();
+
+            if ($branchFee) {
+                if (! $branchFee->is_served) {
+                    throw new Exception("هذا المتجر لا يوفر التوصيل حالياً إلى منطقة ({$zone->name})");
+                }
+
+                return [
+                    'zone_id' => $zone->id,
+                    'zone_name' => $zone->name,
+                    'delivery_fee' => number_format((float) $branchFee->delivery_fee, 2, '.', ''),
+                ];
+            }
+        }
+
+        // 3. Fallback default fee if store owner hasn't configured custom zone pricing yet
         return [
             'zone_id' => $zone?->id,
             'zone_name' => $zone?->name ?? 'مدينة قنا (وسط البلد)',

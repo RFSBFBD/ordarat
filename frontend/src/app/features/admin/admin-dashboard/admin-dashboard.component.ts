@@ -52,9 +52,10 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         </button>
       </div>
 
-      <!-- Pending Zones Notice (Design Decision Gate) -->
-      <div class="pending-notice-box">
-        ⚠️ <strong>ملاحظة هامة:</strong> {{ t.admin.zones.pendingNotice }}
+      <!-- Approved Decision Notice -->
+      <div class="approved-decision-box">
+        ✅ <strong>قرار معتمد:</strong> تسعير رسوم التوصيل بمناطق قنا مسند بالكامل لأصحاب المطاعم
+        والبقالات لكل فرع، ورقم التواصل المعتمد للاشتراك هو: <strong>+201055370118</strong>
       </div>
 
       <!-- Top KPI Stats -->
@@ -279,16 +280,15 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
             />
           </div>
 
-          <div class="decision-gate-card">
-            <h4>بوابة قرار مناطق التوصيل والتسعير (مدينة قنا)</h4>
+          <div class="decision-gate-card approved">
+            <h4>✅ القرار المعتمد: تسعير التوصيل بواسطة صاحب المتجر</h4>
             <p>
-              القرار المطلوب من صاحب المشروع: من الذي يحدد مناطق التوصيل ويسعرها؟ (الأدمن أم صاحب
-              المتجر أم كلاهما). تم تصميم الـ API وقاعدة البيانات لتكون مرنة وتدعم كلا السيناريوهين،
-              ويتم حالياً استخدام مناطق تجريبية محددة لقنا (وسط البلد، المعنا، الجامعة، حي المصالح).
+              بناءً على القرار المعتمد من صاحب المشروع: يقوم كل صاحب مطعم أو بقالة بتحديد قيمة
+              التوصيل الخاصة بفروعه لكل منطقة في قنا، مع إمكانية استبعاد أي منطقة لا يغطيها مندوبوه.
             </p>
             <div class="zones-preview-grid">
               <div class="zone-pill" *ngFor="let z of testZones">
-                <strong>{{ z.name }}</strong> (سعر استرشادي: {{ z.fee }} ج.م)
+                <strong>{{ z.name }}</strong> (يحددها المحل)
               </div>
             </div>
           </div>
@@ -403,13 +403,13 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         border-radius: 10px;
         font-size: 0.75rem;
       }
-      .pending-notice-box {
-        background: #fffbeb;
-        border: 1px solid #f6e05e;
+      .approved-decision-box {
+        background: #f0fff4;
+        border: 1px solid #9ae6b4;
         border-radius: 8px;
         padding: 0.85rem 1.25rem;
         margin-bottom: 1.5rem;
-        color: #744210;
+        color: #22543d;
         font-size: 0.95rem;
       }
       .kpi-grid {
@@ -634,7 +634,7 @@ export class AdminDashboardComponent {
   overrideReason = '';
 
   settings = {
-    subscription_contact_number: '01000000000 (Placeholder)',
+    subscription_contact_number: '+201055370118',
     unaccepted_order_alert_minutes: 10,
     order_rate_limit_per_minute: 5,
   };

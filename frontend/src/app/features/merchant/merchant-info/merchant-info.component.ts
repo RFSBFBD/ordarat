@@ -113,9 +113,9 @@ export class MerchantInfoComponent {
   private readonly router = inject(Router);
   protected readonly t = AR_TRANSLATIONS;
 
-  // Decision 15: Configurable placeholder, empty or set by config
-  subscriptionNumber = '';
-  whatsappNumber = '';
+  // Decision 15: Configured official subscription number
+  subscriptionNumber = '+201055370118';
+  whatsappNumber = '201055370118';
 
   goBack() {
     this.router.navigate(['/']);
