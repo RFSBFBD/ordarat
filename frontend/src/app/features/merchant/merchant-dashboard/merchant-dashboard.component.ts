@@ -69,6 +69,13 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         >
           مناطق وأسعار التوصيل
         </button>
+        <button
+          class="tab-btn"
+          [class.active]="activeTab() === 'ai_tools'"
+          (click)="activeTab.set('ai_tools')"
+        >
+          ✨ {{ t.store.aiTools.tabTitle }}
+        </button>
       </div>
 
       <!-- TAB 1: ORDERS QUEUE -->
@@ -398,6 +405,230 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 5: AI TOOLS -->
+      <div *ngIf="activeTab() === 'ai_tools'" class="ai-tools-tab">
+        <!-- Notice if unavailable -->
+        <div class="ai-unavailable-card" *ngIf="!aiAvailable()">
+          <span class="warning-icon">⚠️</span>
+          <div>
+            <strong>{{ t.store.aiTools.unavailableNotice }}</strong>
+            <p>تم إيقاف المساعد الذكي مؤقتاً أو بانتظار ضبط ميزانية الاستخدام من إدارة المنصة.</p>
+          </div>
+        </div>
+
+        <div class="ai-grid" *ngIf="aiAvailable()">
+          <!-- OCR Menu Card -->
+          <div class="ai-feature-card">
+            <div class="card-header-badge">
+              <h3>📸 {{ t.store.aiTools.menuOcrTitle }}</h3>
+              <span class="badge badge-preparing">استخراج مسودة</span>
+            </div>
+            <p class="feature-desc">{{ t.store.aiTools.menuOcrDesc }}</p>
+
+            <div class="ai-warning-box">
+              <span class="warn-icon">🔒</span>
+              <div>
+                <strong>تنبيه الخصوصية والأمان:</strong>
+                <p>{{ t.store.aiTools.consentNotice }}</p>
+                <small>{{ t.store.aiTools.cropBlurHelp }}</small>
+              </div>
+            </div>
+
+            <!-- Upload and Privacy Controls -->
+            <div class="upload-zone">
+              <input
+                type="file"
+                id="menuFileInput"
+                accept="image/*"
+                (change)="onMenuFileSelected($event)"
+                class="file-input-hidden"
+              />
+              <label for="menuFileInput" class="btn btn-outline upload-label">
+                📁 اختيار صورة المنيو من جهازك
+              </label>
+              <span class="file-name" *ngIf="menuImageFileName()">{{ menuImageFileName() }}</span>
+            </div>
+
+            <!-- Image Preview & Privacy Crop/Blur -->
+            <div class="image-preview-wrapper" *ngIf="menuImagePreview()">
+              <div class="preview-toolbar">
+                <span class="preview-title">معاينة الصورة قبل الإرسال:</span>
+                <button
+                  class="btn btn-sm"
+                  [class.btn-warning]="isBlurActive()"
+                  [class.btn-outline]="!isBlurActive()"
+                  (click)="toggleBlur()"
+                >
+                  {{ isBlurActive() ? '🔲 إلغاء طمس البيانات' : '🛡️ تطبيق طمس الخصوصية (أرقام الهواتف)' }}
+                </button>
+              </div>
+              <div class="preview-frame" [class.blurred-overlay]="isBlurActive()">
+                <img [src]="menuImagePreview()" alt="معاينة المنيو" class="preview-img" />
+                <div class="blur-indicator" *ngIf="isBlurActive()">
+                  <span>🛡️ تم تطبيق تمويه الخصوصية للبيانات الحساسة</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="feature-actions">
+              <button
+                class="btn btn-primary"
+                [disabled]="!menuImagePreview() || isExtractingMenu()"
+                (click)="extractMenuFromImage()"
+              >
+                {{ isExtractingMenu() ? '⏳ جاري استخراج وقراءة الأصناف...' : '✨ استخراج مسودة المنيو' }}
+              </button>
+            </div>
+
+            <!-- Extracted Drafts Section -->
+            <div class="drafts-section" *ngIf="menuDrafts().length > 0">
+              <hr class="section-divider" />
+              <div class="draft-header-row">
+                <h4>📋 {{ t.store.aiTools.draftTitle }}</h4>
+                <span class="hint-text">تظهر كمسودة فقط ولا تُضاف لمتجرك إلا بعد مراجعتك واعتمادك</span>
+              </div>
+
+              <div class="draft-review-card" *ngFor="let draft of menuDrafts()">
+                <div class="draft-meta">
+                  <strong>{{ draft.title }}</strong>
+                  <span class="badge badge-new">{{ draft.items.length }} صنف مستخرج</span>
+                </div>
+
+                <div class="table-responsive">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>الصنف المستخرج</th>
+                        <th>التصنيف</th>
+                        <th>السعر المقترح</th>
+                        <th>ملاحظة التدقيق</th>
+                        <th>الاعتماد</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let item of draft.items">
+                        <td><strong>{{ item.name }}</strong></td>
+                        <td><span class="category-tag">{{ item.category_name }}</span></td>
+                        <td>
+                          <input
+                            type="number"
+                            step="0.5"
+                            [(ngModel)]="item.price"
+                            class="text-input price-input"
+                          />
+                          ج.م
+                        </td>
+                        <td>
+                          <span class="badge badge-warning-custom" *ngIf="item.is_ambiguous">
+                            ⚠️ سعر غامض (يُرجى التأكيد)
+                          </span>
+                          <span class="badge badge-accepted" *ngIf="!item.is_ambiguous">
+                            ✅ واضح
+                          </span>
+                        </td>
+                        <td>
+                          <div class="action-btn-group">
+                            <button
+                              class="btn btn-sm"
+                              [class.btn-success]="item.is_accepted"
+                              [class.btn-outline]="!item.is_accepted"
+                              (click)="item.is_accepted = !item.is_accepted"
+                            >
+                              {{ item.is_accepted ? 'معتمد ✅' : 'استبعاد' }}
+                            </button>
+                            <button
+                              class="btn btn-sm btn-danger-outline"
+                              (click)="removeDraftItem(draft, item)"
+                            >
+                              حذف
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="draft-actions-footer">
+                  <button
+                    class="btn btn-success"
+                    (click)="importAcceptedDraftItems(draft)"
+                  >
+                    🚀 {{ t.store.aiTools.importBtn }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Product Illustrative Image Generator Card -->
+          <div class="ai-feature-card">
+            <div class="card-header-badge">
+              <h3>🎨 {{ t.store.aiTools.imageGenTitle }}</h3>
+              <span class="badge badge-accepted">توليد توضيحي</span>
+            </div>
+            <p class="feature-desc">{{ t.store.aiTools.imageGenDesc }}</p>
+
+            <div class="form-group">
+              <label>اسم المنتج المراد توليد صورته:</label>
+              <input
+                type="text"
+                [(ngModel)]="imageGenProductName"
+                class="text-input"
+                placeholder="مثال: فطيرة مشلتت بالسمن البلدي"
+              />
+            </div>
+
+            <div class="form-group">
+              <label>تصنيف الصنف:</label>
+              <select [(ngModel)]="imageGenCategory" class="select-input">
+                <option value="مشويات">مشويات</option>
+                <option value="طواجن">طواجن</option>
+                <option value="سندوتشات">سندوتشات</option>
+                <option value="فطائر ومخبوزات">فطائر ومخبوزات</option>
+                <option value="مقبلات وسلطات">مقبلات وسلطات</option>
+                <option value="مشروبات">مشروبات</option>
+                <option value="بقالة وتموين">بقالة وتموين</option>
+              </select>
+            </div>
+
+            <div class="feature-actions">
+              <button
+                class="btn btn-primary"
+                [disabled]="!imageGenProductName || isGeneratingImage()"
+                (click)="generateProductImage()"
+              >
+                {{ isGeneratingImage() ? '⏳ جاري توليد الصورة التوضيحية...' : '✨ توليد صورة توضيحية' }}
+              </button>
+            </div>
+
+            <!-- Generated Image Preview -->
+            <div class="generated-preview-card" *ngIf="generatedImage()">
+              <div class="preview-badge-row">
+                <span class="badge badge-illustrative">🎨 {{ t.store.aiTools.illustrativeBadge }}</span>
+                <span class="dedup-hint">تم تحسين الاسم ومطابقته لمنع الازدواجية</span>
+              </div>
+              <div class="gen-img-container">
+                <img [src]="generatedImage()?.url" alt="صورة توضيحية للمنتج" class="gen-img" />
+              </div>
+              <p class="gen-product-title"><strong>{{ generatedImage()?.name }}</strong></p>
+              <p class="gen-disclaimer">
+                هذه الصورة توضيحية من الذكاء الاصطناعي للمعاينة، ولن تظهر للعملاء إلا بعد اعتمادك البشري.
+              </p>
+              <div class="card-footer-actions">
+                <button
+                  class="btn btn-success"
+                  [disabled]="generatedImage()?.is_approved"
+                  (click)="approveGeneratedImage()"
+                >
+                  {{ generatedImage()?.is_approved ? 'تم الاعتماد بنجاح ✅' : t.store.aiTools.approveImageBtn }}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1009,16 +1240,312 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         gap: 0.75rem;
         margin-top: 1.25rem;
       }
+
+      /* AI Tools Styles */
+      .ai-tools-tab {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+      .ai-unavailable-card {
+        background: #fffaf0;
+        border: 1px solid #feebc8;
+        border-radius: 8px;
+        padding: 1.25rem;
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        color: #744210;
+      }
+      .warning-icon {
+        font-size: 2rem;
+      }
+      .ai-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+        gap: 1.5rem;
+      }
+      .ai-feature-card {
+        background: #fff;
+        border: 1px solid var(--color-border);
+        border-radius: 10px;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      }
+      .card-header-badge {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+      }
+      .card-header-badge h3 {
+        margin: 0;
+        color: var(--color-primary);
+        font-size: 1.2rem;
+      }
+      .feature-desc {
+        font-size: 0.9rem;
+        color: var(--color-text-muted);
+        margin: 0.25rem 0 1rem;
+      }
+      .ai-warning-box {
+        background: #f0f7f9;
+        border: 1px solid #bce1ec;
+        border-radius: 6px;
+        padding: 0.85rem;
+        display: flex;
+        gap: 0.75rem;
+        margin-bottom: 1.25rem;
+        font-size: 0.85rem;
+      }
+      .ai-warning-box .warn-icon {
+        font-size: 1.3rem;
+      }
+      .ai-warning-box p {
+        margin: 0.2rem 0;
+        color: #0c4a6e;
+      }
+      .ai-warning-box small {
+        color: #0369a1;
+        display: block;
+      }
+      .upload-zone {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+      .file-input-hidden {
+        display: none;
+      }
+      .upload-label {
+        cursor: pointer;
+      }
+      .file-name {
+        font-size: 0.85rem;
+        color: var(--color-text-muted);
+      }
+      .image-preview-wrapper {
+        border: 1px solid var(--color-border);
+        border-radius: 8px;
+        padding: 0.75rem;
+        margin-bottom: 1rem;
+        background: #fafafa;
+      }
+      .preview-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+      }
+      .preview-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+      .preview-frame {
+        position: relative;
+        max-height: 250px;
+        overflow: hidden;
+        border-radius: 6px;
+        display: flex;
+        justify-content: center;
+        background: #eee;
+      }
+      .preview-img {
+        max-width: 100%;
+        max-height: 250px;
+        object-fit: contain;
+        transition: filter 0.3s;
+      }
+      .blurred-overlay .preview-img {
+        filter: blur(14px);
+      }
+      .blur-indicator {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.75);
+        color: #fff;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+      .feature-actions {
+        margin-top: 1rem;
+        display: flex;
+        justify-content: flex-end;
+      }
+      .drafts-section {
+        margin-top: 1.5rem;
+      }
+      .section-divider {
+        border: 0;
+        border-top: 1px solid var(--color-border);
+        margin: 1.25rem 0;
+      }
+      .draft-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+      .draft-header-row h4 {
+        margin: 0;
+        color: var(--color-primary);
+      }
+      .hint-text {
+        font-size: 0.82rem;
+        color: var(--color-text-muted);
+      }
+      .draft-review-card {
+        border: 1px solid var(--color-border);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background: #fdfcf9;
+      }
+      .draft-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+      }
+      .category-tag {
+        background: #edf2f7;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+      }
+      .price-input {
+        max-width: 90px;
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+      }
+      .badge-warning-custom {
+        background: #feebc8;
+        color: #9c4221;
+      }
+      .action-btn-group {
+        display: flex;
+        gap: 0.35rem;
+      }
+      .draft-actions-footer {
+        margin-top: 1rem;
+        display: flex;
+        justify-content: flex-end;
+      }
+      .generated-preview-card {
+        margin-top: 1.5rem;
+        border: 1px solid var(--color-border);
+        border-radius: 8px;
+        padding: 1rem;
+        background: #faf8f5;
+        text-align: center;
+      }
+      .preview-badge-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+      }
+      .badge-illustrative {
+        background: #e9d8fd;
+        color: #553c9a;
+      }
+      .dedup-hint {
+        font-size: 0.8rem;
+        color: #2b6cb0;
+      }
+      .gen-img-container {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 0.75rem;
+      }
+      .gen-img {
+        max-width: 100%;
+        max-height: 220px;
+        border-radius: 8px;
+        object-fit: cover;
+      }
+      .gen-product-title {
+        font-size: 1.05rem;
+        color: var(--color-primary);
+        margin: 0.5rem 0 0.25rem;
+      }
+      .gen-disclaimer {
+        font-size: 0.82rem;
+        color: var(--color-text-muted);
+        margin: 0 0 1rem;
+      }
+      .card-footer-actions {
+        display: flex;
+        justify-content: center;
+      }
     `,
   ],
 })
 export class MerchantDashboardComponent {
   protected readonly t = AR_TRANSLATIONS;
 
-  activeTab = signal<'orders' | 'products' | 'branches' | 'zones'>('orders');
+  activeTab = signal<'orders' | 'products' | 'branches' | 'zones' | 'ai_tools'>('orders');
   soundEnabled = signal<boolean>(true);
   showNewProductModal = signal<boolean>(false);
   selectedOrderForRejection = signal<any | null>(null);
+
+  // AI Tools Signals & State
+  aiAvailable = signal<boolean>(true);
+  menuImagePreview = signal<string | null>(null);
+  menuImageFileName = signal<string | null>(null);
+  isBlurActive = signal<boolean>(false);
+  isExtractingMenu = signal<boolean>(false);
+  menuDrafts = signal<any[]>([
+    {
+      id: 1,
+      title: 'مسودة منيو تجريبية مستخرجة',
+      created_at: 'الآن',
+      status: 'draft',
+      items: [
+        {
+          id: 101,
+          name: 'فراخ مشوية على الفحم شيش',
+          category_name: 'مشويات',
+          price: 120.0,
+          is_ambiguous: false,
+          is_accepted: true,
+        },
+        {
+          id: 102,
+          name: 'طاجن عكاوي بلدي بالبصل',
+          category_name: 'طواجن',
+          price: 160.0,
+          is_ambiguous: true,
+          is_accepted: false,
+        },
+        {
+          id: 103,
+          name: 'سلطة طحينة قناوية فاخرة',
+          category_name: 'مقبلات',
+          price: 15.0,
+          is_ambiguous: false,
+          is_accepted: true,
+        },
+      ],
+    },
+  ]);
+
+  imageGenProductName = '';
+  imageGenCategory = 'مشويات';
+  isGeneratingImage = signal<boolean>(false);
+  generatedImage = signal<{
+    name: string;
+    url: string;
+    is_illustrative: boolean;
+    is_approved: boolean;
+  } | null>(null);
 
   orderFilter = 'all';
   selectedBranchFilter = 'all';
@@ -1281,6 +1808,116 @@ export class MerchantDashboardComponent {
       });
       this.newProduct = { name: '', price: null, description: '' };
       this.showNewProductModal.set(false);
+    }
+  }
+
+  // AI Methods
+  onMenuFileSelected(event: any) {
+    const file = event.target.files?.[0];
+    if (file) {
+      this.menuImageFileName.set(file.name);
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        this.menuImagePreview.set(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  toggleBlur() {
+    this.isBlurActive.set(!this.isBlurActive());
+  }
+
+  extractMenuFromImage() {
+    this.isExtractingMenu.set(true);
+    setTimeout(() => {
+      this.isExtractingMenu.set(false);
+      const newDraft = {
+        id: Date.now(),
+        title: `مسودة منيو (${this.menuImageFileName() || 'صورة منيو'})`,
+        created_at: 'الآن',
+        status: 'draft',
+        items: [
+          {
+            id: Date.now() + 1,
+            name: 'كباب حلة صعيدي',
+            category_name: 'طواجن',
+            price: 135.0,
+            is_ambiguous: false,
+            is_accepted: true,
+          },
+          {
+            id: Date.now() + 2,
+            name: 'شوربة لسان عصفور بلدي',
+            category_name: 'شوربة',
+            price: 25.0,
+            is_ambiguous: false,
+            is_accepted: true,
+          },
+          {
+            id: Date.now() + 3,
+            name: 'حمام محشي أرز بالخلطة',
+            category_name: 'مشويات',
+            price: 150.0,
+            is_ambiguous: true,
+            is_accepted: false,
+          },
+        ],
+      };
+      this.menuDrafts.update((drafts) => [newDraft, ...drafts]);
+      alert('تم استخراج مسودة المنيو بنجاح! يرجى مراجعة وتدقيق الأسعار قبل الاستيراد.');
+    }, 600);
+  }
+
+  removeDraftItem(draft: any, item: any) {
+    draft.items = draft.items.filter((i: any) => i.id !== item.id);
+  }
+
+  importAcceptedDraftItems(draft: any) {
+    const acceptedItems = draft.items.filter((i: any) => i.is_accepted);
+    if (acceptedItems.length === 0) {
+      alert('يرجى اعتماد صنف واحد على الأقل للاستيراد');
+      return;
+    }
+
+    acceptedItems.forEach((item: any) => {
+      this.products.unshift({
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        name: item.name,
+        categoryName: item.category_name,
+        price: Number(item.price),
+        description: 'مستورد من مسودة المنيو بالذكاء الاصطناعي',
+        is_available: true,
+      });
+    });
+
+    draft.status = 'imported';
+    alert(`تم استيراد ${acceptedItems.length} صنف بنجاح إلى قائمة منتجات متجرك!`);
+  }
+
+  generateProductImage() {
+    if (!this.imageGenProductName) return;
+    this.isGeneratingImage.set(true);
+    setTimeout(() => {
+      this.isGeneratingImage.set(false);
+      this.generatedImage.set({
+        name: this.imageGenProductName,
+        url:
+          'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"><rect width="400" height="300" fill="%230E5A6B"/><text x="50%25" y="45%25" dominant-baseline="middle" text-anchor="middle" fill="%23F5B335" font-size="20" font-family="sans-serif">صورة توضيحية بالذكاء الاصطناعي</text><text x="50%25" y="60%25" dominant-baseline="middle" text-anchor="middle" fill="%23FFFFFF" font-size="16" font-family="sans-serif">' +
+          encodeURIComponent(this.imageGenProductName) +
+          '</text></svg>',
+        is_illustrative: true,
+        is_approved: false,
+      });
+    }, 500);
+  }
+
+  approveGeneratedImage() {
+    const img = this.generatedImage();
+    if (img) {
+      img.is_approved = true;
+      this.generatedImage.set({ ...img });
+      alert(`تم اعتماد الصورة التوضيحية لمنتج "${img.name}" بنجاح!`);
     }
   }
 }

@@ -73,4 +73,59 @@ describe('AdminDashboardComponent - Branch Managers', () => {
 
     alertMock.mockRestore();
   });
+
+  describe('Admin Analytics & AI Controls', () => {
+    it('should switch to analytics tab and display SQL-backed metrics', () => {
+      component.activeTab.set('analytics');
+      expect(component.activeTab()).toBe('analytics');
+      expect(component.analyticsPeriod).toBe('all');
+      expect(component.analyticsData.orders.total_orders).toBeGreaterThan(0);
+      expect(component.analyticsData.users.total_customers).toBeGreaterThan(0);
+      expect(component.analyticsData.cash_summary.delivered_cash_total_egp).toBeDefined();
+    });
+
+    it('should switch to ai settings tab and display provider configurations', () => {
+      component.activeTab.set('ai');
+      expect(component.activeTab()).toBe('ai');
+      expect(component.aiSettings.text_analysis.provider_name).toBe('mock');
+      expect(component.aiSettings.image_ocr_menu.provider_name).toBe('mock');
+      expect(component.aiSettings.image_generation.provider_name).toBe('mock');
+      expect(component.aiKillSwitchActive).toBe(false);
+    });
+
+    it('should toggle emergency kill switch to stop all AI services', () => {
+      const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      expect(component.aiKillSwitchActive).toBe(false);
+
+      component.toggleKillSwitch();
+      expect(component.aiKillSwitchActive).toBe(true);
+
+      component.toggleKillSwitch();
+      expect(component.aiKillSwitchActive).toBe(false);
+      alertMock.mockRestore();
+    });
+
+    it('should toggle store AI freeze', () => {
+      const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      const store = component.stores[0];
+      const initialFreeze = store.is_frozen;
+
+      component.toggleStoreFreeze(store);
+      expect(store.is_frozen).toBe(!initialFreeze);
+
+      alertMock.mockRestore();
+    });
+
+    it('should preview AI analysis payload ensuring zero customer PII before execution', () => {
+      component.openAiAnalyzePreviewModal();
+      expect(component.showAiAnalyzePreviewModal()).toBe(true);
+
+      const payloadStr = component.aiPayloadPreviewJson();
+      // Ensure zero PII: no customer phone numbers or customer personal names
+      expect(payloadStr).not.toContain('010');
+      expect(payloadStr).not.toContain('محمود');
+      expect(payloadStr).not.toContain('إبراهيم');
+      expect(payloadStr).toContain('total_orders');
+    });
+  });
 });

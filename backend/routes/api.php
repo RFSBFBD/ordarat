@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\AdminAiController;
+use App\Http\Controllers\AdminAnalyticsController;
 use App\Http\Controllers\AdminAuditLogController;
 use App\Http\Controllers\AdminBranchManagerController;
 use App\Http\Controllers\AdminCustomerController;
@@ -9,6 +11,7 @@ use App\Http\Controllers\AdminStoreController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BranchDashboardController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\MerchantAiController;
 use App\Http\Controllers\MerchantBranchController;
 use App\Http\Controllers\MerchantCategoryController;
 use App\Http\Controllers\MerchantOrderController;
@@ -64,6 +67,20 @@ Route::middleware('firebase.auth')->group(function () {
         Route::get('/branch-managers', [AdminBranchManagerController::class, 'index']);
         Route::post('/branch-managers', [AdminBranchManagerController::class, 'store']);
         Route::patch('/branch-managers/{user}/status', [AdminBranchManagerController::class, 'toggleStatus']);
+
+        // Platform Analytics (Admin Only - Reliable SQL)
+        Route::get('/analytics', [AdminAnalyticsController::class, 'index']);
+
+        // AI Provider Settings & Operations (Admin Only)
+        Route::get('/ai/settings', [AdminAiController::class, 'getSettings']);
+        Route::put('/ai/settings/{functionType}', [AdminAiController::class, 'updateSettings']);
+        Route::post('/ai/test-connection', [AdminAiController::class, 'testConnection']);
+        Route::patch('/ai/kill-switch', [AdminAiController::class, 'toggleKillSwitch']);
+        Route::get('/ai/usage-logs', [AdminAiController::class, 'getUsageLogs']);
+        Route::get('/ai/stores', [AdminAiController::class, 'getStoresQuota']);
+        Route::patch('/ai/stores/{store}/freeze', [AdminAiController::class, 'toggleStoreFreeze']);
+        Route::post('/ai/analyze-platform', [AdminAiController::class, 'analyzePlatform']);
+        Route::get('/ai/analysis-history', [AdminAiController::class, 'getAnalysisHistory']);
     });
 
     // Branch Manager Endpoints (Branch Dashboard)
@@ -104,6 +121,14 @@ Route::middleware('firebase.auth')->group(function () {
         // Orders
         Route::get('/stores/{store}/orders', [MerchantOrderController::class, 'index']);
         Route::patch('/stores/{store}/orders/{order}/status', [MerchantOrderController::class, 'updateStatus']);
+
+        // Store Owner AI Tools (Menu OCR Draft & Illustrative Images)
+        Route::post('/stores/{store}/ai/ocr-menu', [MerchantAiController::class, 'extractMenu']);
+        Route::get('/stores/{store}/ai/menu-drafts', [MerchantAiController::class, 'listMenuDrafts']);
+        Route::patch('/stores/{store}/ai/menu-draft-items/{item}', [MerchantAiController::class, 'updateDraftItem']);
+        Route::post('/stores/{store}/ai/menu-drafts/{draft}/import', [MerchantAiController::class, 'importDraft']);
+        Route::post('/stores/{store}/ai/generate-product-image', [MerchantAiController::class, 'generateProductImage']);
+        Route::post('/stores/{store}/ai/images/{image}/approve', [MerchantAiController::class, 'approveImage']);
     });
 
     Route::put('/stores/{store}', [StoreController::class, 'update']);

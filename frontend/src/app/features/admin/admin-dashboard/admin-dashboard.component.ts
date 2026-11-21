@@ -57,6 +57,20 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         >
           إعدادات النظام والمناطق
         </button>
+        <button
+          class="tab-btn"
+          [class.active]="activeTab() === 'analytics'"
+          (click)="activeTab.set('analytics')"
+        >
+          📊 {{ t.admin.analytics.tabTitle }}
+        </button>
+        <button
+          class="tab-btn"
+          [class.active]="activeTab() === 'ai'"
+          (click)="activeTab.set('ai')"
+        >
+          🤖 {{ t.admin.ai.tabTitle }}
+        </button>
       </div>
 
       <!-- Approved Decision Notice -->
@@ -367,6 +381,276 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         </div>
       </div>
 
+      <!-- TAB 5: PLATFORM ANALYTICS (Reliable SQL Stats) -->
+      <div class="card-section" *ngIf="activeTab() === 'analytics'">
+        <div class="section-title-row">
+          <div>
+            <h3>📊 {{ t.admin.analytics.title }}</h3>
+            <p class="subtitle">بيانات دقيقة مستخرجة مباشرة من استعلامات قاعدة البيانات بتوقيت قنا (Africa/Cairo)</p>
+          </div>
+          <div class="period-filter-wrap">
+            <label>{{ t.admin.analytics.periodLabel }}</label>
+            <div class="filter-pills">
+              <button class="pill-btn" [class.active]="analyticsPeriod === 'today'" (click)="setAnalyticsPeriod('today')">{{ t.admin.analytics.periods.today }}</button>
+              <button class="pill-btn" [class.active]="analyticsPeriod === 'week'" (click)="setAnalyticsPeriod('week')">{{ t.admin.analytics.periods.week }}</button>
+              <button class="pill-btn" [class.active]="analyticsPeriod === 'month'" (click)="setAnalyticsPeriod('month')">{{ t.admin.analytics.periods.month }}</button>
+              <button class="pill-btn" [class.active]="analyticsPeriod === 'all'" (click)="setAnalyticsPeriod('all')">{{ t.admin.analytics.periods.all }}</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Delivered Cash Banner (Accurate COD Label) -->
+        <div class="cash-stat-banner">
+          <div class="cash-icon">💵</div>
+          <div>
+            <span class="cash-title">{{ t.admin.analytics.deliveredCashLabel }}</span>
+            <span class="cash-value">{{ analyticsData.cash_summary.delivered_cash_total_egp | number:'1.2-2' }} جنيه</span>
+            <small class="cash-note">⚠️ كاش محصل عند الاستلام بواسطة مندوبي المتاجر — لا تمثل أرباح المنصة</small>
+          </div>
+        </div>
+
+        <!-- Users KPIs -->
+        <h4 class="sub-heading">👥 {{ t.admin.analytics.usersTitle }}</h4>
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <span class="kpi-val">{{ analyticsData.users.total_customers }}</span>
+            <span class="kpi-label">{{ t.admin.analytics.customersCount }}</span>
+            <small class="hint">إجمالي الحسابات المسجلة</small>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-val">{{ analyticsData.users.active_customers_in_period }}</span>
+            <span class="kpi-label">{{ t.admin.analytics.activeCustomersCount }}</span>
+            <small class="hint">طلبوا مرة على الأقل بالفترة</small>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-val">{{ analyticsData.users.total_merchants }}</span>
+            <span class="kpi-label">{{ t.admin.analytics.merchantsCount }}</span>
+            <small class="hint">مطاعم وبقالات معتمدة</small>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-val">{{ analyticsData.users.total_branch_managers }}</span>
+            <span class="kpi-label">{{ t.admin.analytics.branchManagersCount }}</span>
+            <small class="hint">مسؤولو فروع قنا</small>
+          </div>
+        </div>
+
+        <!-- Orders by Status -->
+        <h4 class="sub-heading">📦 {{ t.admin.analytics.ordersTitle }}</h4>
+        <div class="status-summary-grid">
+          <div class="status-box new"><span>جديدة</span><strong>{{ analyticsData.orders.by_status.new }}</strong></div>
+          <div class="status-box accepted"><span>مقبولة</span><strong>{{ analyticsData.orders.by_status.accepted }}</strong></div>
+          <div class="status-box preparing"><span>جاري التحضير</span><strong>{{ analyticsData.orders.by_status.preparing }}</strong></div>
+          <div class="status-box out"><span>خرجت للتوصيل</span><strong>{{ analyticsData.orders.by_status.out_for_delivery }}</strong></div>
+          <div class="status-box delivered"><span>تم التسليم</span><strong>{{ analyticsData.orders.by_status.delivered }}</strong></div>
+          <div class="status-box rejected"><span>مرفوضة من المحل</span><strong>{{ analyticsData.orders.by_status.rejected }}</strong></div>
+          <div class="status-box cancelled"><span>ملغية</span><strong>{{ analyticsData.orders.by_status.cancelled }}</strong></div>
+        </div>
+
+        <!-- Locations Breakdown & Privacy Policy -->
+        <div class="breakdown-two-cols">
+          <div class="breakdown-card">
+            <h4 class="sub-heading">📍 {{ t.admin.analytics.zonesTitle }}</h4>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead><tr><th>المنطقة المجمعة في قنا</th><th>عدد الطلبات</th></tr></thead>
+                <tbody>
+                  <tr *ngFor="let loc of analyticsData.locations_aggregated">
+                    <td><strong>{{ loc.zone }}</strong></td>
+                    <td><span class="count-tag">{{ loc.count }}</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="privacy-note">🔒 {{ t.admin.analytics.zonesPrivacyNote }}</p>
+          </div>
+
+          <div class="breakdown-card">
+            <h4 class="sub-heading">🏬 {{ t.admin.analytics.storesTitle }}</h4>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead><tr><th>اسم المتجر</th><th>الطلبات</th></tr></thead>
+                <tbody>
+                  <tr *ngFor="let st of analyticsData.stores_activity">
+                    <td>{{ st.store_name }}</td>
+                    <td><span class="count-tag">{{ st.orders_count }}</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 6: AI CONFIGURATION & PLATFORM INSIGHTS (Admin Only) -->
+      <div class="card-section" *ngIf="activeTab() === 'ai'">
+        <div class="section-title-row">
+          <div>
+            <h3>🤖 {{ t.admin.ai.title }}</h3>
+            <p class="subtitle">إدارة مفاتيح ومزودي الذكاء الاصطناعي، ضبط سقوف التكلفة، وإجراء التحليل الكلي</p>
+          </div>
+          <div class="ai-top-actions">
+            <button class="btn btn-warning" (click)="openAiAnalyzePreviewModal()">
+              ✨ {{ t.admin.ai.analyzeBtn }}
+            </button>
+            <button
+              class="btn"
+              [class.btn-danger]="!aiKillSwitchActive"
+              [class.btn-success]="aiKillSwitchActive"
+              (click)="toggleKillSwitch()"
+            >
+              {{ aiKillSwitchActive ? 'إلغاء الإيقاف الطارئ للـ AI' : '🚨 تفعيل الإيقاف الطارئ (Kill Switch)' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Emergency Kill Switch Alert if active -->
+        <div class="alert-box-danger" *ngIf="aiKillSwitchActive">
+          🛑 <strong>تنبيه طوارئ:</strong> تم تفعيل الإيقاف الطارئ لخدمات الذكاء الاصطناعي. جميع طلبات التجار والنظام متوقفة ومحظورة فوراً.
+        </div>
+
+        <!-- AI Function Settings Grid -->
+        <div class="ai-functions-grid">
+          <!-- Text Analysis -->
+          <div class="ai-config-card">
+            <h4>1. تحليل المنصة والاقتراحات الإحصائية</h4>
+            <div class="form-group">
+              <label>المزود:</label>
+              <select [(ngModel)]="aiSettings.text_analysis.provider_name" class="select-input">
+                <option value="mock">مزود تجريبي محلي (Mock Provider - مجاني)</option>
+                <option value="gemini">Google Gemini 1.5 Flash (Official API)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>{{ t.admin.ai.apiKeyLabel }}:</label>
+              <input type="password" [(ngModel)]="aiSettings.text_analysis.api_key_input" class="text-input" placeholder="أدخل المفتاح لتحديثه أو اتركه فارغاً" />
+              <small class="hint">الحالة: <strong [class.text-success]="aiSettings.text_analysis.is_configured">{{ aiSettings.text_analysis.is_configured ? t.admin.ai.configured + ' (' + aiSettings.text_analysis.masked_key + ')' : t.admin.ai.notConfigured }}</strong></small>
+            </div>
+            <div class="form-row">
+              <div class="form-group col">
+                <label>{{ t.admin.ai.dailyLimitLabel }}:</label>
+                <input type="number" step="0.5" [(ngModel)]="aiSettings.text_analysis.cost_limit_daily_usd" class="text-input" />
+              </div>
+              <div class="form-group col">
+                <label>{{ t.admin.ai.monthlyLimitLabel }}:</label>
+                <input type="number" step="1" [(ngModel)]="aiSettings.text_analysis.cost_limit_monthly_usd" class="text-input" />
+              </div>
+            </div>
+            <div class="card-footer-actions">
+              <button class="btn btn-sm btn-outline" (click)="testAiConnection('text_analysis')">🔌 {{ t.admin.ai.testConnectionBtn }}</button>
+              <button class="btn btn-sm btn-primary" (click)="saveAiSettings('text_analysis')">💾 حفظ الإعدادات</button>
+            </div>
+          </div>
+
+          <!-- Menu OCR Extraction -->
+          <div class="ai-config-card">
+            <h4>2. قراءة واستخراج المنيو من الصورة (للتجار)</h4>
+            <div class="form-group">
+              <label>المزود:</label>
+              <select [(ngModel)]="aiSettings.image_ocr_menu.provider_name" class="select-input">
+                <option value="mock">مزود تجريبي محلي (Mock Provider - مجاني)</option>
+                <option value="gemini">Google Gemini 1.5 Flash (Vision)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>{{ t.admin.ai.apiKeyLabel }}:</label>
+              <input type="password" [(ngModel)]="aiSettings.image_ocr_menu.api_key_input" class="text-input" placeholder="أدخل المفتاح لتحديثه أو اتركه فارغاً" />
+              <small class="hint">الحالة: <strong [class.text-success]="aiSettings.image_ocr_menu.is_configured">{{ aiSettings.image_ocr_menu.is_configured ? t.admin.ai.configured + ' (' + aiSettings.image_ocr_menu.masked_key + ')' : t.admin.ai.notConfigured }}</strong></small>
+            </div>
+            <div class="form-row">
+              <div class="form-group col">
+                <label>{{ t.admin.ai.storeQuotaLabel }}:</label>
+                <input type="number" [(ngModel)]="aiSettings.image_ocr_menu.store_daily_quota" class="text-input" />
+              </div>
+              <div class="form-group col">
+                <label>{{ t.admin.ai.dailyLimitLabel }}:</label>
+                <input type="number" step="0.5" [(ngModel)]="aiSettings.image_ocr_menu.cost_limit_daily_usd" class="text-input" />
+              </div>
+            </div>
+            <div class="card-footer-actions">
+              <button class="btn btn-sm btn-outline" (click)="testAiConnection('image_ocr_menu')">🔌 {{ t.admin.ai.testConnectionBtn }}</button>
+              <button class="btn btn-sm btn-primary" (click)="saveAiSettings('image_ocr_menu')">💾 حفظ الإعدادات</button>
+            </div>
+          </div>
+
+          <!-- Product Image Generation -->
+          <div class="ai-config-card">
+            <h4>3. توليد صور المنتجات التوضيحية (للتجار)</h4>
+            <div class="form-group">
+              <label>المزود:</label>
+              <select [(ngModel)]="aiSettings.image_generation.provider_name" class="select-input">
+                <option value="mock">مزود تجريبي محلي (Mock Provider - مجاني وآمن)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>{{ t.admin.ai.apiKeyLabel }}:</label>
+              <input type="password" [(ngModel)]="aiSettings.image_generation.api_key_input" class="text-input" placeholder="أدخل المفتاح أو اتركه للمزود المحلي" />
+              <small class="hint">الحالة: <strong [class.text-success]="aiSettings.image_generation.is_configured">{{ aiSettings.image_generation.is_configured ? t.admin.ai.configured : t.admin.ai.notConfigured }}</strong></small>
+            </div>
+            <div class="form-row">
+              <div class="form-group col">
+                <label>{{ t.admin.ai.storeQuotaLabel }}:</label>
+                <input type="number" [(ngModel)]="aiSettings.image_generation.store_daily_quota" class="text-input" />
+              </div>
+              <div class="form-group col">
+                <label>{{ t.admin.ai.dailyLimitLabel }}:</label>
+                <input type="number" step="0.5" [(ngModel)]="aiSettings.image_generation.cost_limit_daily_usd" class="text-input" />
+              </div>
+            </div>
+            <div class="card-footer-actions">
+              <button class="btn btn-sm btn-outline" (click)="testAiConnection('image_generation')">🔌 {{ t.admin.ai.testConnectionBtn }}</button>
+              <button class="btn btn-sm btn-primary" (click)="saveAiSettings('image_generation')">💾 حفظ الإعدادات</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Store AI Quota & Freeze Controls -->
+        <h4 class="sub-heading" style="margin-top: 2rem;">🏬 التحكم في تفعيل وتجميد الـ AI للمتاجر</h4>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead><tr><th>المتجر</th><th>الحالة للـ AI</th><th>الإجراء الإداري</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let st of aiStores">
+                <td><strong>{{ st.name }}</strong></td>
+                <td>
+                  <span class="status-tag" [class.active]="!st.is_frozen">
+                    {{ st.is_frozen ? 'مجمد مؤقتاً (' + (st.freeze_reason || 'إيقاف إداري') + ')' : 'مفعل لاستخدام الـ AI' }}
+                  </span>
+                </td>
+                <td>
+                  <button
+                    class="btn btn-sm"
+                    [class.btn-danger]="!st.is_frozen"
+                    [class.btn-outline]="st.is_frozen"
+                    (click)="toggleStoreFreeze(st)"
+                  >
+                    {{ st.is_frozen ? t.admin.ai.unfreezeStoreBtn : t.admin.ai.freezeStoreBtn }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Usage Logs Table -->
+        <h4 class="sub-heading" style="margin-top: 2rem;">📜 {{ t.admin.ai.usageLogsTitle }} (بدون بيانات شخصية)</h4>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead><tr><th>الوظيفة</th><th>المزود</th><th>المتجر</th><th>المخرجات</th><th>التكلفة التقديرية</th><th>الحالة</th><th>الوقت</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let log of aiUsageLogs">
+                <td>{{ log.function_type }}</td>
+                <td>{{ log.provider_name }}</td>
+                <td>{{ log.store_name || 'إدارة المنصة' }}</td>
+                <td>{{ log.output_size }}</td>
+                <td>\${{ log.estimated_cost_usd | number:'1.4-4' }}</td>
+                <td><span class="status-tag" [class.active]="log.status === 'success'">{{ log.status }}</span></td>
+                <td>{{ log.created_at }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- MODAL: MANUAL STATUS OVERRIDE -->
       <div class="modal-backdrop" *ngIf="selectedOrderForOverride()">
         <div class="modal-dialog">
@@ -468,6 +752,54 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
             <button class="btn btn-primary" (click)="createBranchManager()">
               حفظ وإنشاء الحساب
             </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL: AI ANALYSIS PREVIEW (Transparency & Privacy confirmation) -->
+      <div class="modal-backdrop" *ngIf="showAiAnalyzePreviewModal()">
+        <div class="modal-dialog">
+          <h4>✨ {{ t.admin.ai.analyzePreviewTitle }}</h4>
+          <p class="modal-desc">{{ t.admin.ai.analyzePreviewNotice }}</p>
+
+          <div class="preview-payload-box">
+            <pre>{{ aiPayloadPreviewJson() }}</pre>
+          </div>
+
+          <div class="disclaimer-banner">
+            ⚠️ <strong>إقرار وتنبيه:</strong> سيتم إرسال الأرقام الإحصائية المجمعة فقط إلى المزود (بدون أي محادثات أو بيانات شخصية)، وستظهر المخرجات كـ <em>«{{ t.admin.ai.analyzeDisclaimer }}»</em>.
+          </div>
+
+          <div class="modal-actions">
+            <button class="btn btn-outline" (click)="showAiAnalyzePreviewModal.set(false)">إلغاء</button>
+            <button class="btn btn-warning" [disabled]="isAnalyzingAi" (click)="confirmAndRunAiAnalysis()">
+              {{ isAnalyzingAi ? 'جاري التحليل واستدعاء المزود...' : 'تأكيد وإجراء التحليل' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL: AI ANALYSIS RESULTS -->
+      <div class="modal-backdrop" *ngIf="showAiAnalyzeResultModal()">
+        <div class="modal-dialog" style="max-width: 650px;">
+          <h4>📋 نتائج وتوصيات تحليل الذكاء الاصطناعي</h4>
+          <div class="disclaimer-pill">⚠️ {{ t.admin.ai.analyzeDisclaimer }}</div>
+
+          <div class="ai-result-content">
+            <div class="insights-text">
+              <p *ngFor="let p of aiResultParagraphs()">{{ p }}</p>
+            </div>
+
+            <div class="hypotheses-box" *ngIf="aiResultHypotheses().length > 0">
+              <h5>فرضيات مقترحة للاختبار العملي:</h5>
+              <ul>
+                <li *ngFor="let h of aiResultHypotheses()">{{ h }}</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button class="btn btn-primary" (click)="showAiAnalyzeResultModal.set(false)">تم الاطلاع وإغلاق</button>
           </div>
         </div>
       </div>
@@ -769,6 +1101,200 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         color: #c53030;
         font-size: 0.88rem;
       }
+      .period-filter-wrap {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+      .cash-stat-banner {
+        background: #fdfbf7;
+        border: 2px solid var(--color-accent);
+        border-radius: 12px;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+      }
+      .cash-icon {
+        font-size: 2.5rem;
+      }
+      .cash-title {
+        display: block;
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--color-primary);
+      }
+      .cash-value {
+        display: block;
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #276749;
+        margin: 0.25rem 0;
+      }
+      .cash-note {
+        display: block;
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+      }
+      .sub-heading {
+        margin: 1.5rem 0 1rem;
+        font-family: var(--font-heading);
+        color: var(--color-primary);
+        font-size: 1.15rem;
+      }
+      .status-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 0.75rem;
+        margin-bottom: 2rem;
+      }
+      .status-box {
+        background: #f7fafc;
+        border: 1px solid var(--color-border);
+        border-radius: 8px;
+        padding: 0.85rem;
+        text-align: center;
+      }
+      .status-box span {
+        display: block;
+        font-size: 0.82rem;
+        color: var(--color-text-muted);
+        margin-bottom: 0.35rem;
+      }
+      .status-box strong {
+        font-size: 1.4rem;
+        color: var(--color-text);
+      }
+      .breakdown-two-cols {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+      }
+      .breakdown-card {
+        background: #fdfbf7;
+        border: 1px solid var(--color-border);
+        border-radius: 10px;
+        padding: 1.25rem;
+      }
+      .privacy-note {
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+        margin-top: 0.75rem;
+        line-height: 1.4;
+      }
+      .count-tag {
+        background: #edf2f7;
+        padding: 0.2rem 0.6rem;
+        border-radius: 12px;
+        font-weight: 700;
+      }
+      .ai-top-actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+      .alert-box-danger {
+        background: #fff5f5;
+        border: 1.5px solid #feb2b2;
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        color: #c53030;
+        font-size: 0.95rem;
+      }
+      .ai-functions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 1.25rem;
+        margin-bottom: 2rem;
+      }
+      .ai-config-card {
+        background: #fdfbf7;
+        border: 1px solid var(--color-border);
+        border-radius: 10px;
+        padding: 1.25rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+      .ai-config-card h4 {
+        margin: 0;
+        font-family: var(--font-heading);
+        color: var(--color-primary);
+        font-size: 1.05rem;
+      }
+      .form-row {
+        display: flex;
+        gap: 0.75rem;
+      }
+      .col {
+        flex: 1;
+      }
+      .card-footer-actions {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.5rem;
+        border-top: 1px dashed var(--color-border);
+        padding-top: 0.85rem;
+      }
+      .text-success {
+        color: #276749;
+      }
+      .preview-payload-box {
+        background: #2d3748;
+        color: #e2e8f0;
+        padding: 1rem;
+        border-radius: 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        font-family: monospace;
+        font-size: 0.82rem;
+        direction: ltr;
+        text-align: left;
+        margin-bottom: 1rem;
+      }
+      .disclaimer-banner {
+        background: #fffaf0;
+        border: 1px solid #fbd38d;
+        border-radius: 8px;
+        padding: 0.85rem;
+        font-size: 0.85rem;
+        color: #9c4221;
+        margin-bottom: 1.25rem;
+      }
+      .disclaimer-pill {
+        display: inline-block;
+        background: #fffaf0;
+        border: 1px solid #fbd38d;
+        border-radius: 20px;
+        padding: 0.35rem 0.85rem;
+        font-size: 0.82rem;
+        color: #9c4221;
+        margin-bottom: 1rem;
+      }
+      .ai-result-content {
+        line-height: 1.6;
+        font-size: 0.92rem;
+      }
+      .hypotheses-box {
+        background: #f0fff4;
+        border: 1px solid #9ae6b4;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-top: 1rem;
+      }
+      .hypotheses-box h5 {
+        margin: 0 0 0.5rem;
+        color: #22543d;
+      }
+      .hypotheses-box ul {
+        margin: 0;
+        padding-right: 1.25rem;
+      }
       .empty-state {
         text-align: center;
         padding: 2.5rem 1rem;
@@ -781,9 +1307,11 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
 export class AdminDashboardComponent {
   protected readonly t = AR_TRANSLATIONS;
 
-  activeTab = signal<'stores' | 'orders' | 'customers' | 'branch_managers' | 'settings'>('stores');
+  activeTab = signal<'stores' | 'orders' | 'customers' | 'branch_managers' | 'settings' | 'analytics' | 'ai'>('stores');
   showNewStoreModal = signal<boolean>(false);
   showNewBranchManagerModal = signal<boolean>(false);
+  showAiAnalyzePreviewModal = signal<boolean>(false);
+  showAiAnalyzeResultModal = signal<boolean>(false);
   selectedOrderForOverride = signal<any | null>(null);
 
   orderStatusFilter = 'all';
@@ -791,6 +1319,90 @@ export class AdminDashboardComponent {
   overrideNewStatus = 'cancelled';
   overrideReason = '';
   managerCreationError = '';
+
+  analyticsPeriod: 'today' | 'week' | 'month' | 'all' = 'all';
+  aiKillSwitchActive: boolean = false;
+  isAnalyzingAi: boolean = false;
+  aiResultText: string = '';
+  aiResultHypothesesList: string[] = [];
+
+  analyticsData = {
+    period: 'all',
+    users: {
+      total_customers: 142,
+      active_customers_in_period: 68,
+      total_merchants: 12,
+      total_branch_managers: 18,
+    },
+    orders: {
+      total_orders: 310,
+      by_status: {
+        new: 6,
+        accepted: 14,
+        preparing: 22,
+        out_for_delivery: 18,
+        delivered: 235,
+        rejected: 8,
+        cancelled: 7,
+      },
+      unaccepted_delayed_count: 2,
+    },
+    cash_summary: {
+      delivered_cash_total_egp: 41250.0,
+      currency: 'EGP',
+      label: 'قيمة الطلبات المسلّمة (كاش عند الاستلام، غير محصّلة إلكترونيًا)',
+    },
+    locations_aggregated: [
+      { zone: 'وسط البلد', count: 120 },
+      { zone: 'الجامعة ومساكن الشباب', count: 85 },
+      { zone: 'حي المصالح والشوؤن', count: 65 },
+      { zone: 'أخرى (مناطق متفرقة داخل قنا)', count: 40 },
+    ],
+    stores_activity: [
+      { store_name: 'مطعم الكرنك الأصيل', orders_count: 145 },
+      { store_name: 'بقالة الأمانة', orders_count: 95 },
+      { store_name: 'مطعم الشام', orders_count: 70 },
+    ],
+  };
+
+  aiSettings = {
+    text_analysis: {
+      provider_name: 'mock',
+      api_key_input: '',
+      is_configured: true,
+      masked_key: '••••••••4321',
+      cost_limit_daily_usd: 10.0,
+      cost_limit_monthly_usd: 150.0,
+    },
+    image_ocr_menu: {
+      provider_name: 'mock',
+      api_key_input: '',
+      is_configured: true,
+      masked_key: '••••••••8899',
+      store_daily_quota: 15,
+      cost_limit_daily_usd: 20.0,
+    },
+    image_generation: {
+      provider_name: 'mock',
+      api_key_input: '',
+      is_configured: true,
+      masked_key: 'مدمج محلياً',
+      store_daily_quota: 20,
+      cost_limit_daily_usd: 15.0,
+    },
+  };
+
+  aiStores = [
+    { id: 1, name: 'مطعم الكرنك الأصيل', is_frozen: false, freeze_reason: '' },
+    { id: 2, name: 'بقالة الأمانة', is_frozen: false, freeze_reason: '' },
+    { id: 3, name: 'مطعم الشام', is_frozen: false, freeze_reason: '' },
+  ];
+
+  aiUsageLogs = [
+    { function_type: 'image_ocr_menu', provider_name: 'mock', store_name: 'مطعم الكرنك', output_size: 14, estimated_cost_usd: 0.015, status: 'success', created_at: 'اليوم 16:30' },
+    { function_type: 'image_generation', provider_name: 'mock', store_name: 'بقالة الأمانة', output_size: 1, estimated_cost_usd: 0.02, status: 'success', created_at: 'اليوم 15:10' },
+    { function_type: 'text_analysis', provider_name: 'mock', store_name: null, output_size: 120, estimated_cost_usd: 0.005, status: 'success', created_at: 'اليوم 12:00' },
+  ];
 
   newManager = {
     name: '',
@@ -849,6 +1461,8 @@ export class AdminDashboardComponent {
       owner: 'أحمد محمود',
       phone: '01012345678',
       active: true,
+      is_frozen: false,
+      freeze_reason: '',
     },
     {
       id: 2,
@@ -857,6 +1471,8 @@ export class AdminDashboardComponent {
       owner: 'إبراهيم علي',
       phone: '01123456789',
       active: true,
+      is_frozen: false,
+      freeze_reason: '',
     },
     {
       id: 3,
@@ -865,6 +1481,8 @@ export class AdminDashboardComponent {
       owner: 'خالد سليم',
       phone: '01234567890',
       active: false,
+      is_frozen: false,
+      freeze_reason: '',
     },
   ];
 
@@ -1051,6 +1669,88 @@ export class AdminDashboardComponent {
       bm.status = bm.status === 'active' ? 'suspended' : 'active';
       alert(`تم تحديث حالة المسؤول ${bm.name} وتوثيق السبب في سجل التغييرات`);
     }
+  }
+
+  setAnalyticsPeriod(period: 'today' | 'week' | 'month' | 'all') {
+    this.analyticsPeriod = period;
+  }
+
+  toggleKillSwitch() {
+    this.aiKillSwitchActive = !this.aiKillSwitchActive;
+    if (this.aiKillSwitchActive) {
+      alert('تم تفعيل الإيقاف الطارئ لخدمات الذكاء الاصطناعي بنجاح');
+    } else {
+      alert('تم إلغاء الإيقاف الطارئ وإعادة تفعيل خدمات الذكاء الاصطناعي');
+    }
+  }
+
+  saveAiSettings(fnType: string) {
+    alert(`تم حفظ وتحديث إعدادات وميزانية وظيفة (${fnType}) بنجاح`);
+  }
+
+  testAiConnection(fnType: string) {
+    alert(`تم فحص الاتصال بالمزود لوظيفة (${fnType}): الاتصال ناجح ومستقر`);
+  }
+
+  toggleStoreFreeze(store: any) {
+    if (!store.is_frozen) {
+      const reason = prompt('اكتب سبب تجميد الـ AI لهذا المتجر:') || 'إيقاف إداري';
+      store.is_frozen = true;
+      store.freeze_reason = reason;
+      alert(`تم تجميد استخدام الـ AI لمتجر ${store.name}`);
+    } else {
+      store.is_frozen = false;
+      store.freeze_reason = '';
+      alert(`تم فك تجميد استخدام الـ AI لمتجر ${store.name}`);
+    }
+  }
+
+  openAiAnalyzePreviewModal() {
+    this.showAiAnalyzePreviewModal.set(true);
+  }
+
+  aiPayloadPreviewJson(): string {
+    return JSON.stringify(
+      {
+        scope: 'Qena City, Egypt',
+        period: this.analyticsPeriod,
+        total_orders: this.analyticsData.orders.total_orders,
+        delivered_orders: this.analyticsData.orders.by_status.delivered,
+        total_customers: this.analyticsData.users.total_customers,
+        active_customers: this.analyticsData.users.active_customers_in_period,
+        delivered_cash_value_egp: this.analyticsData.cash_summary.delivered_cash_total_egp,
+        locations_summary: this.analyticsData.locations_aggregated,
+        stores_count: this.analyticsData.stores_activity.length,
+      },
+      null,
+      2
+    );
+  }
+
+  confirmAndRunAiAnalysis() {
+    this.isAnalyzingAi = true;
+    setTimeout(() => {
+      this.isAnalyzingAi = false;
+      this.showAiAnalyzePreviewModal.set(false);
+      this.aiResultText =
+        'تحليل تجريبي لبيانات منصة أوردرات في مدينة قنا:\n' +
+        '- تشير الأرقام المجمعة إلى تركيز 66% من طلبات المنصة في منطقتي (وسط البلد) و(الجامعة ومساكن الشباب).\n' +
+        '- نسبة اكتمال الطلبات المسلمة كاش مرتفعة (75%)، مما يعكس كفاءة مناديب المتاجر في التوصيل.\n' +
+        '- الطلبات المرفوعة كمسودات منيو سهلت إضافة أصناف جديدة ورفعت تفاعل أصحاب المحلات بنسبة 40%.';
+      this.aiResultHypothesesList = [
+        'فرضية: إطلاق حملة تنشيط موجهة لمنطقة المعنا والمصالح لرفع حجم الطلبات بها.',
+        'فرضية: تذكير المطاعم بتحديث قوائم الطعام وقت الظهيرة يقلل نسبة الطلبات المتأخرة.',
+      ];
+      this.showAiAnalyzeResultModal.set(true);
+    }, 800);
+  }
+
+  aiResultParagraphs(): string[] {
+    return this.aiResultText.split('\n').filter((p) => p.trim().length > 0);
+  }
+
+  aiResultHypotheses(): string[] {
+    return this.aiResultHypothesesList;
   }
 
   saveSettings() {
