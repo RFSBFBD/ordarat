@@ -37,8 +37,8 @@ Route::middleware('firebase.auth')->group(function () {
     Route::post('/auth/profile', [AuthController::class, 'updateProfile']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
 
-    // Customer Checkout
-    Route::post('/checkout', [CheckoutController::class, 'checkout']);
+    // Customer Checkout (Rate limited)
+    Route::post('/checkout', [CheckoutController::class, 'checkout'])->middleware('throttle:order_submission');
 
     // Admin Endpoints
     Route::prefix('admin')->group(function () {
