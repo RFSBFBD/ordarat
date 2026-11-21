@@ -1,0 +1,40 @@
+:root {
+  --color-primary: #0E5A6B;
+  --color-primary-dark: #093c47;
+  --color-accent: #F5B335;
+  --color-accent-hover: #e09f25;
+  --color-bg: #F6EEDC;
+  --color-card-bg: #FFFFFF;
+  --color-text: #1E2A2F;
+  --color-text-muted: #5C6E76;
+  --color-border: #E2D9C5;
+  --color-danger: #D9383A;
+  --color-success: #28A745;
+  --font-heading: 'Tajawal', sans-serif;
+  --font-body: 'IBM Plex Sans Arabic', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  direction: rtl;
+  text-align: right;
+}
+
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: var(--font-heading);
+  font-weight: 700;
+}
+
+button {
+  font-family: var(--font-body);
+}

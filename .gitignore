@@ -1,0 +1,18 @@
+# Root gitignore
+.git
+.idea
+.vscode
+*.log
+
+# Dependencies
+**/node_modules/
+**/vendor/
+
+# Build artifacts
+**/dist/
+**/tmp/
+storage/*.key
+
+# Environment files
+**/.env
+!**/.env.example

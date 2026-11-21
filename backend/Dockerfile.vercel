@@ -1,0 +1,46 @@
+# Vercel Container Function Dockerfile for Laravel via FrankenPHP
+FROM dunglas/frankenphp:1-php8.3-alpine
+
+RUN apk add --no-cache \
+    postgresql-dev \
+    icu-dev \
+    libzip-dev \
+    zip \
+    unzip \
+    git \
+    curl
+
+RUN docker-php-ext-install \
+    pdo \
+    pdo_pgsql \
+    pgsql \
+    intl \
+    opcache \
+    zip \
+    pcntl
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /app
+
+COPY . .
+
+RUN composer install --no-dev --optimize-autoloader --no-interaction
+
+RUN mkdir -p /tmp/storage/framework/cache \
+    && mkdir -p /tmp/storage/framework/sessions \
+    && mkdir -p /tmp/storage/framework/views \
+    && mkdir -p /tmp/storage/logs \
+    && chmod -R 777 /tmp/storage
+
+ENV APP_ENV=production \
+    APP_DEBUG=false \
+    LOG_CHANNEL=stderr \
+    SESSION_DRIVER=array \
+    CACHE_STORE=array \
+    VIEW_COMPILED_PATH=/tmp/storage/framework/views
+
+# Vercel containers serve HTTP on port 80 by default
+EXPOSE 80
+
+CMD ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]
