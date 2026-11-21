@@ -6,6 +6,11 @@ use App\Http\Controllers\AdminOrderController;
 use App\Http\Controllers\AdminSettingsController;
 use App\Http\Controllers\AdminStoreController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\MerchantBranchController;
+use App\Http\Controllers\MerchantCategoryController;
+use App\Http\Controllers\MerchantOrderController;
+use App\Http\Controllers\MerchantProductController;
+use App\Http\Controllers\MerchantStoreController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\StoreController;
 use Illuminate\Support\Facades\Route;
@@ -48,10 +53,39 @@ Route::middleware('firebase.auth')->group(function () {
         Route::get('/audit-logs', [AdminAuditLogController::class, 'index']);
     });
 
-    // Stores (Management & Updates by owners)
+    // Merchant / Store Owner Endpoints
+    Route::prefix('merchant')->group(function () {
+        Route::get('/stores', [MerchantStoreController::class, 'index']);
+        Route::get('/stores/{store}', [MerchantStoreController::class, 'show']);
+        Route::put('/stores/{store}', [MerchantStoreController::class, 'update']);
+        Route::post('/stores/{store}/upload-image', [MerchantStoreController::class, 'uploadImage']);
+
+        // Branches
+        Route::get('/stores/{store}/branches', [MerchantBranchController::class, 'index']);
+        Route::post('/stores/{store}/branches', [MerchantBranchController::class, 'store']);
+        Route::put('/stores/{store}/branches/{branch}', [MerchantBranchController::class, 'update']);
+
+        // Categories
+        Route::get('/stores/{store}/categories', [MerchantCategoryController::class, 'index']);
+        Route::post('/stores/{store}/categories', [MerchantCategoryController::class, 'store']);
+        Route::put('/stores/{store}/categories/{category}', [MerchantCategoryController::class, 'update']);
+        Route::delete('/stores/{store}/categories/{category}', [MerchantCategoryController::class, 'destroy']);
+
+        // Products
+        Route::get('/stores/{store}/products', [MerchantProductController::class, 'index']);
+        Route::post('/stores/{store}/products', [MerchantProductController::class, 'store']);
+        Route::put('/stores/{store}/products/{product}', [MerchantProductController::class, 'update']);
+        Route::patch('/stores/{store}/products/{product}/toggle-availability', [MerchantProductController::class, 'toggleAvailability']);
+        Route::post('/stores/{store}/products/{product}/upload-image', [MerchantProductController::class, 'uploadImage']);
+
+        // Orders
+        Route::get('/stores/{store}/orders', [MerchantOrderController::class, 'index']);
+        Route::patch('/stores/{store}/orders/{order}/status', [MerchantOrderController::class, 'updateStatus']);
+    });
+
     Route::put('/stores/{store}', [StoreController::class, 'update']);
 
-    // Orders
+    // Orders (General view)
     Route::get('/orders/{order}', [OrderController::class, 'show']);
     Route::patch('/orders/{order}/status', [OrderController::class, 'updateStatus']);
 });
