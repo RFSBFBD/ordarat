@@ -10,6 +10,30 @@ use Illuminate\Support\Facades\Gate;
 
 class AdminStoreController extends Controller
 {
+    public function index(Request $request): JsonResponse
+    {
+        Gate::authorize('create', Store::class); // Admin check
+
+        $query = Store::with(['branches', 'users']);
+
+        if ($request->has('type')) {
+            $query->where('type', $request->query('type'));
+        }
+
+        if ($request->has('is_active')) {
+            $query->where('is_active', filter_var($request->query('is_active'), FILTER_VALIDATE_BOOLEAN));
+        }
+
+        if ($search = $request->query('search')) {
+            $query->where('name', 'like', "%{$search}%");
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $query->latest()->get(),
+        ]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         Gate::authorize('create', Store::class);
@@ -44,13 +68,41 @@ class AdminStoreController extends Controller
             'action' => 'OPEN_STORE_ACCOUNT',
             'auditable_type' => Store::class,
             'auditable_id' => $store->id,
-            'new_values' => ['name' => $store->name, 'type' => $store->type],
+            'new_values' => ['name' => $store->name, 'type' => $store->type, 'owner_id' => $validated['owner_id']],
             'ip_address' => $request->ip(),
         ]);
 
         return response()->json([
             'success' => true,
-            'data' => $store->load('branches'),
+            'data' => $store->load(['branches', 'users']),
         ], 201);
+    }
+
+    public function toggleStatus(Request $request, Store $store): JsonResponse
+    {
+        Gate::authorize('create', Store::class);
+
+        $validated = $request->validate([
+            'is_active' => 'required|boolean',
+            'reason' => 'required|string|max:500',
+        ]);
+
+        $oldStatus = $store->is_active;
+        $store->update(['is_active' => $validated['is_active']]);
+
+        AuditLog::create([
+            'user_id' => $request->user()->id,
+            'action' => $validated['is_active'] ? 'ACTIVATE_STORE' : 'SUSPEND_STORE',
+            'auditable_type' => Store::class,
+            'auditable_id' => $store->id,
+            'old_values' => ['is_active' => $oldStatus],
+            'new_values' => ['is_active' => $validated['is_active'], 'reason' => $validated['reason']],
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $store,
+        ]);
     }
 }
