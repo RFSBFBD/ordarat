@@ -1,51 +1,27 @@
 <div class="ordarat-app min-h-screen flex flex-col">
-  <!-- Header -->
+  <!-- Top Navigation Header -->
   <header class="app-header">
     <div class="header-container">
-      <div class="brand">
+      <a routerLink="/" class="brand-link">
         <h1 class="brand-title">أوردرات</h1>
         <span class="brand-slogan">طلبات قنا لحد بابك</span>
-      </div>
-      <div class="header-actions">
-        <a href="#partner" class="btn btn-secondary">اشترك كتاجر</a>
+      </a>
+
+      <div class="header-nav">
+        <a routerLink="/customer/stores" routerLinkActive="active" class="nav-item">المتاجر</a>
+        <a routerLink="/store/dashboard" routerLinkActive="active" class="nav-item">لوحة المتجر</a>
+        <a routerLink="/admin/dashboard" routerLinkActive="active" class="nav-item">الأدمن</a>
+        <a routerLink="/auth/merchant-info" class="btn btn-secondary">اشترك كتاجر</a>
       </div>
     </div>
   </header>
 
-  <!-- Main Content View -->
+  <!-- Routed Views -->
   <main class="main-content">
     <router-outlet></router-outlet>
-
-    <!-- Welcome Card Showcase (Phase 0 / 1 Proof of Concept) -->
-    <section class="welcome-section" *ngIf="isLanding">
-      <div class="welcome-card">
-        <h2 class="welcome-heading">مرحباً بك في أوردرات قنا</h2>
-        <p class="welcome-sub">اطلب أكلك وبقالتك من كل مطاعم ومحلات قنا لحد باب بيتك.</p>
-
-        <div class="cards-grid">
-          <div class="action-card client-card">
-            <div class="card-icon">🛵</div>
-            <h3 class="card-title">عايز أطلب</h3>
-            <p class="card-desc">تصفح المطاعم ومحلات البقالة واطلب كاش عند الاستلام</p>
-            <button class="btn btn-primary" (click)="selectRole('client')">دخول المستخدم</button>
-          </div>
-
-          <div class="action-card merchant-card">
-            <div class="card-icon">🏪</div>
-            <h3 class="card-title">عندي مطعم أو بقالة</h3>
-            <p class="card-desc">اشترك كتاجر وابدأ استقبل طلبات زباينك في قنا</p>
-            <button class="btn btn-accent" (click)="selectRole('merchant')">بيانات الاشتراك</button>
-          </div>
-        </div>
-
-        <div class="guest-link-wrapper">
-          <button class="link-btn" (click)="continueAsGuest()">كمّل كضيف</button>
-        </div>
-      </div>
-    </section>
   </main>
 
-  <!-- Footer -->
+  <!-- Global Footer -->
   <footer class="app-footer">
     <p>منصة أوردرات · مخصصة لمدينة قنا فقط · الدفع كاش عند الاستلام</p>
   </footer>

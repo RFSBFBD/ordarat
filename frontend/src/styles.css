@@ -1,15 +1,15 @@
 :root {
-  --color-primary: #0E5A6B;
+  --color-primary: #0e5a6b;
   --color-primary-dark: #093c47;
-  --color-accent: #F5B335;
+  --color-accent: #f5b335;
   --color-accent-hover: #e09f25;
-  --color-bg: #F6EEDC;
-  --color-card-bg: #FFFFFF;
-  --color-text: #1E2A2F;
-  --color-text-muted: #5C6E76;
-  --color-border: #E2D9C5;
-  --color-danger: #D9383A;
-  --color-success: #28A745;
+  --color-bg: #f6eedc;
+  --color-card-bg: #ffffff;
+  --color-text: #1e2a2f;
+  --color-text-muted: #5c6e76;
+  --color-border: #e2d9c5;
+  --color-danger: #d9383a;
+  --color-success: #28a745;
   --font-heading: 'Tajawal', sans-serif;
   --font-body: 'IBM Plex Sans Arabic', sans-serif;
 }
@@ -18,7 +18,8 @@
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   width: 100%;
@@ -30,7 +31,13 @@ html, body {
   text-align: right;
 }
 
-h1, h2, h3, h4, h5, h6, .font-heading {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.font-heading {
   font-family: var(--font-heading);
   font-weight: 700;
 }

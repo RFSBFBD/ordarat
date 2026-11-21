@@ -6,7 +6,7 @@ Route::get('/', function () {
     return response()->json([
         'name' => 'Ordarat Platform API',
         'city' => 'Qena',
-        'status' => 'operational'
+        'status' => 'operational',
     ]);
 });
 
