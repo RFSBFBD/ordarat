@@ -90,7 +90,9 @@ Route::middleware('firebase.auth')->group(function () {
 
     Route::put('/stores/{store}', [StoreController::class, 'update']);
 
-    // Orders (General view)
+    // Orders
+    Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/{order}', [OrderController::class, 'show']);
+    Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel']);
     Route::patch('/orders/{order}/status', [OrderController::class, 'updateStatus']);
 });

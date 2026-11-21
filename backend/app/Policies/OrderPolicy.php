@@ -34,7 +34,19 @@ class OrderPolicy
             return $order->store->users()->where('users.id', $user->id)->exists();
         }
 
-        // Customer cannot update order status
+        return false;
+    }
+
+    public function cancel(User $user, Order $order): bool
+    {
+        if ($user->isAdmin()) {
+            return true;
+        }
+
+        if ($user->isCustomer()) {
+            return $order->customer_id === $user->id && $order->status === 'new';
+        }
+
         return false;
     }
 }
