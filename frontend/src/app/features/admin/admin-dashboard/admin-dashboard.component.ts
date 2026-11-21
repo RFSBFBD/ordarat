@@ -19,29 +19,35 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
 
       <!-- Navigation Tabs -->
       <div class="tabs-nav">
-        <button 
-          class="tab-btn" 
-          [class.active]="activeTab() === 'stores'" 
-          (click)="activeTab.set('stores')">
+        <button
+          class="tab-btn"
+          [class.active]="activeTab() === 'stores'"
+          (click)="activeTab.set('stores')"
+        >
           المتاجر ({{ stores.length }})
         </button>
-        <button 
-          class="tab-btn" 
-          [class.active]="activeTab() === 'orders'" 
-          (click)="activeTab.set('orders')">
+        <button
+          class="tab-btn"
+          [class.active]="activeTab() === 'orders'"
+          (click)="activeTab.set('orders')"
+        >
           متابعة الطلبات
-          <span class="badge-alert" *ngIf="unacceptedAlertCount() > 0">{{ unacceptedAlertCount() }}</span>
+          <span class="badge-alert" *ngIf="unacceptedAlertCount() > 0">{{
+            unacceptedAlertCount()
+          }}</span>
         </button>
-        <button 
-          class="tab-btn" 
-          [class.active]="activeTab() === 'customers'" 
-          (click)="activeTab.set('customers')">
+        <button
+          class="tab-btn"
+          [class.active]="activeTab() === 'customers'"
+          (click)="activeTab.set('customers')"
+        >
           العملاء
         </button>
-        <button 
-          class="tab-btn" 
-          [class.active]="activeTab() === 'settings'" 
-          (click)="activeTab.set('settings')">
+        <button
+          class="tab-btn"
+          [class.active]="activeTab() === 'settings'"
+          (click)="activeTab.set('settings')"
+        >
           إعدادات النظام والمناطق
         </button>
       </div>
@@ -71,7 +77,9 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
       <div class="card-section" *ngIf="activeTab() === 'stores'">
         <div class="section-title-row">
           <h3>{{ t.admin.stores.title }}</h3>
-          <button class="btn btn-primary" (click)="showNewStoreModal.set(true)">+ {{ t.admin.stores.openStoreAccount }}</button>
+          <button class="btn btn-primary" (click)="showNewStoreModal.set(true)">
+            + {{ t.admin.stores.openStoreAccount }}
+          </button>
         </div>
 
         <div class="table-responsive">
@@ -98,8 +106,17 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                   }}</span>
                 </td>
                 <td>
-                  <button class="btn btn-sm" [class.btn-danger]="s.active" [class.btn-outline]="!s.active" (click)="toggleStoreStatus(s)">
-                    {{ s.active ? t.admin.stores.suspendAccountBtn : t.admin.stores.activateAccountBtn }}
+                  <button
+                    class="btn btn-sm"
+                    [class.btn-danger]="s.active"
+                    [class.btn-outline]="!s.active"
+                    (click)="toggleStoreStatus(s)"
+                  >
+                    {{
+                      s.active
+                        ? t.admin.stores.suspendAccountBtn
+                        : t.admin.stores.activateAccountBtn
+                    }}
                   </button>
                 </td>
               </tr>
@@ -142,17 +159,23 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
             </thead>
             <tbody>
               <tr *ngFor="let ord of filteredOrders()">
-                <td><strong>{{ ord.orderNumber }}</strong></td>
+                <td>
+                  <strong>{{ ord.orderNumber }}</strong>
+                </td>
                 <td>{{ ord.storeName }}</td>
                 <td>{{ ord.customerName }} ({{ ord.customerPhone }})</td>
                 <td>{{ ord.grandTotal }} ج.م</td>
                 <td>
-                  <span class="status-tag" [ngClass]="'status-' + ord.status">{{ getStatusLabel(ord.status) }}</span>
+                  <span class="status-tag" [ngClass]="'status-' + ord.status">{{
+                    getStatusLabel(ord.status)
+                  }}</span>
                   <span *ngIf="ord.isDelayed" class="tag-delayed">تأخر في القبول ⚠️</span>
                 </td>
                 <td>{{ ord.minutesAgo }} دقيقة</td>
                 <td>
-                  <button class="btn btn-sm btn-outline" (click)="openStatusOverrideModal(ord)">تدخل يدوي</button>
+                  <button class="btn btn-sm btn-outline" (click)="openStatusOverrideModal(ord)">
+                    تدخل يدوي
+                  </button>
                 </td>
               </tr>
             </tbody>
@@ -164,11 +187,12 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
       <div class="card-section" *ngIf="activeTab() === 'customers'">
         <div class="section-title-row">
           <h3>إدارة العملاء في مدينة قنا</h3>
-          <input 
-            type="text" 
-            [(ngModel)]="customerSearchQuery" 
-            placeholder="بحث بالاسم أو التليفون..." 
-            class="search-input" />
+          <input
+            type="text"
+            [(ngModel)]="customerSearchQuery"
+            placeholder="بحث بالاسم أو التليفون..."
+            class="search-input"
+          />
         </div>
 
         <div class="table-responsive">
@@ -184,18 +208,23 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
             </thead>
             <tbody>
               <tr *ngFor="let cust of filteredCustomers()">
-                <td><strong>{{ cust.name }}</strong></td>
+                <td>
+                  <strong>{{ cust.name }}</strong>
+                </td>
                 <td dir="ltr">{{ cust.phone }}</td>
                 <td>{{ cust.email }}</td>
                 <td>
-                  <span class="status-tag" [class.active]="cust.status === 'active'">{{ cust.status === 'active' ? 'نشط' : 'موقوف' }}</span>
+                  <span class="status-tag" [class.active]="cust.status === 'active'">{{
+                    cust.status === 'active' ? 'نشط' : 'موقوف'
+                  }}</span>
                 </td>
                 <td>
-                  <button 
-                    class="btn btn-sm" 
-                    [class.btn-danger]="cust.status === 'active'" 
+                  <button
+                    class="btn btn-sm"
+                    [class.btn-danger]="cust.status === 'active'"
                     [class.btn-outline]="cust.status !== 'active'"
-                    (click)="toggleCustomerStatus(cust)">
+                    (click)="toggleCustomerStatus(cust)"
+                  >
                     {{ cust.status === 'active' ? 'إيقاف الحساب' : 'تنشيط الحساب' }}
                   </button>
                 </td>
@@ -215,26 +244,47 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         <div class="settings-form">
           <div class="form-group">
             <label>رقم تواصل اشتراك أصحاب المطاعم والبقالات (Placeholder):</label>
-            <input type="text" [(ngModel)]="settings.subscription_contact_number" class="text-input" />
-            <small class="hint">يظهر في كارت البداية وهيدر الموقع عند طلب الانضمام لمنصة أوردرات</small>
+            <input
+              type="text"
+              [(ngModel)]="settings.subscription_contact_number"
+              class="text-input"
+            />
+            <small class="hint"
+              >يظهر في كارت البداية وهيدر الموقع عند طلب الانضمام لمنصة أوردرات</small
+            >
           </div>
 
           <div class="form-group">
             <label>مهلة تنبيه الطلبات غير المقبولة (بالدقائق):</label>
-            <input type="number" [(ngModel)]="settings.unaccepted_order_alert_minutes" min="1" max="120" class="text-input" />
-            <small class="hint">عند تجاوز هذه المهلة بدون قبول المحل للطلب يظهر تنبيه للأدمن للمتابعة</small>
+            <input
+              type="number"
+              [(ngModel)]="settings.unaccepted_order_alert_minutes"
+              min="1"
+              max="120"
+              class="text-input"
+            />
+            <small class="hint"
+              >عند تجاوز هذه المهلة بدون قبول المحل للطلب يظهر تنبيه للأدمن للمتابعة</small
+            >
           </div>
 
           <div class="form-group">
             <label>الحد الأقصى لمحاولات الطلب في الدقيقة (Rate Limit):</label>
-            <input type="number" [(ngModel)]="settings.order_rate_limit_per_minute" min="1" max="30" class="text-input" />
+            <input
+              type="number"
+              [(ngModel)]="settings.order_rate_limit_per_minute"
+              min="1"
+              max="30"
+              class="text-input"
+            />
           </div>
 
           <div class="decision-gate-card">
             <h4>بوابة قرار مناطق التوصيل والتسعير (مدينة قنا)</h4>
             <p>
-              القرار المطلوب من صاحب المشروع: من الذي يحدد مناطق التوصيل ويسعرها؟ (الأدمن أم صاحب المتجر أم كلاهما).
-              تم تصميم الـ API وقاعدة البيانات لتكون مرنة وتدعم كلا السيناريوهين، ويتم حالياً استخدام مناطق تجريبية محددة لقنا (وسط البلد، المعنا، الجامعة، حي المصالح).
+              القرار المطلوب من صاحب المشروع: من الذي يحدد مناطق التوصيل ويسعرها؟ (الأدمن أم صاحب
+              المتجر أم كلاهما). تم تصميم الـ API وقاعدة البيانات لتكون مرنة وتدعم كلا السيناريوهين،
+              ويتم حالياً استخدام مناطق تجريبية محددة لقنا (وسط البلد، المعنا، الجامعة، حي المصالح).
             </p>
             <div class="zones-preview-grid">
               <div class="zone-pill" *ngFor="let z of testZones">
@@ -249,8 +299,11 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
       <div class="modal-backdrop" *ngIf="selectedOrderForOverride()">
         <div class="modal-dialog">
           <h4>تدخل يدوي في حالة الطلب #{{ selectedOrderForOverride()?.orderNumber }}</h4>
-          <p class="modal-desc">يتطلب التدخل اليدوي من الأدمن تسجيل سبب التعديل لأغراض الرقابة وسجل التعديلات (Audit Log).</p>
-          
+          <p class="modal-desc">
+            يتطلب التدخل اليدوي من الأدمن تسجيل سبب التعديل لأغراض الرقابة وسجل التعديلات (Audit
+            Log).
+          </p>
+
           <div class="form-group">
             <label>الحالة الجديدة:</label>
             <select [(ngModel)]="overrideNewStatus" class="select-input">
@@ -262,12 +315,25 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
 
           <div class="form-group">
             <label>سبب التعديل (إلزامي):</label>
-            <textarea [(ngModel)]="overrideReason" class="text-input" rows="3" placeholder="اكتب سبب التعديل بالتفصيل..."></textarea>
+            <textarea
+              [(ngModel)]="overrideReason"
+              class="text-input"
+              rows="3"
+              placeholder="اكتب سبب التعديل بالتفصيل..."
+            ></textarea>
           </div>
 
           <div class="modal-actions">
-            <button class="btn btn-outline" (click)="selectedOrderForOverride.set(null)">إلغاء</button>
-            <button class="btn btn-primary" [disabled]="!overrideReason.trim()" (click)="confirmStatusOverride()">تأكيد التعديل</button>
+            <button class="btn btn-outline" (click)="selectedOrderForOverride.set(null)">
+              إلغاء
+            </button>
+            <button
+              class="btn btn-primary"
+              [disabled]="!overrideReason.trim()"
+              (click)="confirmStatusOverride()"
+            >
+              تأكيد التعديل
+            </button>
           </div>
         </div>
       </div>
@@ -421,15 +487,19 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         font-weight: 600;
         background: #cbd5e0;
       }
-      .status-tag.active, .status-delivered, .status-accepted {
+      .status-tag.active,
+      .status-delivered,
+      .status-accepted {
         background: #c6f6d5;
         color: #22543d;
       }
-      .status-new, .status-preparing {
+      .status-new,
+      .status-preparing {
         background: #feebc8;
         color: #744210;
       }
-      .status-cancelled, .status-rejected {
+      .status-cancelled,
+      .status-rejected {
         background: #fed7d7;
         color: #742a2a;
       }
@@ -465,7 +535,9 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         padding: 0.35rem 0.65rem;
         font-size: 0.85rem;
       }
-      .search-input, .select-input, .text-input {
+      .search-input,
+      .select-input,
+      .text-input {
         padding: 0.5rem 0.85rem;
         border: 1px solid var(--color-border);
         border-radius: 6px;
@@ -522,7 +594,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
       .modal-backdrop {
         position: fixed;
         inset: 0;
-        background: rgba(0,0,0,0.5);
+        background: rgba(0, 0, 0, 0.5);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -608,7 +680,7 @@ export class AdminDashboardComponent {
       storeName: 'مطعم الكرنك (تجريبي)',
       customerName: 'محمود حسن',
       customerPhone: '01098765432',
-      grandTotal: 175.00,
+      grandTotal: 175.0,
       status: 'new',
       minutesAgo: 14,
       isDelayed: true,
@@ -619,7 +691,7 @@ export class AdminDashboardComponent {
       storeName: 'بقالة الأمانة (تجريبي)',
       customerName: 'سارة مصطفى',
       customerPhone: '01144556677',
-      grandTotal: 95.50,
+      grandTotal: 95.5,
       status: 'preparing',
       minutesAgo: 5,
       isDelayed: false,
@@ -651,18 +723,25 @@ export class AdminDashboardComponent {
   ];
 
   unacceptedAlertCount() {
-    return this.orders.filter(o => o.status === 'new' && o.minutesAgo >= this.settings.unaccepted_order_alert_minutes).length;
+    return this.orders.filter(
+      (o) => o.status === 'new' && o.minutesAgo >= this.settings.unaccepted_order_alert_minutes,
+    ).length;
   }
 
   filteredOrders() {
     if (this.orderStatusFilter === 'all') return this.orders;
-    return this.orders.filter(o => o.status === this.orderStatusFilter);
+    return this.orders.filter((o) => o.status === this.orderStatusFilter);
   }
 
   filteredCustomers() {
     const q = this.customerSearchQuery.trim().toLowerCase();
     if (!q) return this.customers;
-    return this.customers.filter(c => c.name.toLowerCase().includes(q) || c.phone.includes(q) || c.email.toLowerCase().includes(q));
+    return this.customers.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.phone.includes(q) ||
+        c.email.toLowerCase().includes(q),
+    );
   }
 
   getStatusLabel(status: string): string {

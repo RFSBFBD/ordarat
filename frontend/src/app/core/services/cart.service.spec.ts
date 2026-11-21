@@ -21,7 +21,7 @@ describe('CartService (Guest to Auth Cart Preservation)', () => {
     const res = service.addItem(1, 'مطعم الكرنك', {
       id: 101,
       name: 'كباب مشوي',
-      price: 120
+      price: 120,
     });
 
     expect(res.success).toBe(true);

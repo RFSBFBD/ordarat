@@ -13,18 +13,25 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
       <div class="dash-header">
         <div>
           <h2 class="title">{{ currentStore.name }}</h2>
-          <span class="store-type-badge">{{ currentStore.type === 'restaurant' ? 'مطعم' : 'بقالة' }} - قنا</span>
+          <span class="store-type-badge"
+            >{{ currentStore.type === 'restaurant' ? 'مطعم' : 'بقالة' }} - قنا</span
+          >
         </div>
         <div class="header-actions">
-          <button class="sound-toggle-btn" [class.sound-on]="soundEnabled()" (click)="toggleSound()">
+          <button
+            class="sound-toggle-btn"
+            [class.sound-on]="soundEnabled()"
+            (click)="toggleSound()"
+          >
             {{ soundEnabled() ? '🔔 صوت التنبيه مفعّل' : '🔕 صوت التنبيه مكتوم' }}
           </button>
           <div class="toggle-wrap">
             <span class="status-label">استقبال الطلبات:</span>
-            <button 
-              class="toggle-btn" 
-              [class.active]="currentStore.is_accepting_orders" 
-              (click)="toggleReceiving()">
+            <button
+              class="toggle-btn"
+              [class.active]="currentStore.is_accepting_orders"
+              (click)="toggleReceiving()"
+            >
               {{ currentStore.is_accepting_orders ? 'مفتوح للطلبات' : 'مغلق حالياً' }}
             </button>
           </div>
@@ -33,23 +40,26 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
 
       <!-- Navigation Tabs -->
       <div class="tabs-nav">
-        <button 
-          class="tab-btn" 
-          [class.active]="activeTab() === 'orders'" 
-          (click)="activeTab.set('orders')">
+        <button
+          class="tab-btn"
+          [class.active]="activeTab() === 'orders'"
+          (click)="activeTab.set('orders')"
+        >
           قائمة الطلبات
           <span class="badge-new" *ngIf="newOrdersCount() > 0">{{ newOrdersCount() }} جديد</span>
         </button>
-        <button 
-          class="tab-btn" 
-          [class.active]="activeTab() === 'products'" 
-          (click)="activeTab.set('products')">
+        <button
+          class="tab-btn"
+          [class.active]="activeTab() === 'products'"
+          (click)="activeTab.set('products')"
+        >
           المنتجات والأصناف ({{ products.length }})
         </button>
-        <button 
-          class="tab-btn" 
-          [class.active]="activeTab() === 'branches'" 
-          (click)="activeTab.set('branches')">
+        <button
+          class="tab-btn"
+          [class.active]="activeTab() === 'branches'"
+          (click)="activeTab.set('branches')"
+        >
           الفروع ومواعيد العمل
         </button>
       </div>
@@ -80,28 +90,60 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
           <div class="section-top">
             <h3>الطلبات المباشرة</h3>
             <div class="filter-pills">
-              <button class="pill-btn" [class.active]="orderFilter === 'all'" (click)="orderFilter = 'all'">الكل</button>
-              <button class="pill-btn" [class.active]="orderFilter === 'new'" (click)="orderFilter = 'new'">جديد ({{ newOrdersCount() }})</button>
-              <button class="pill-btn" [class.active]="orderFilter === 'in_progress'" (click)="orderFilter = 'in_progress'">قيد التنفيذ</button>
-              <button class="pill-btn" [class.active]="orderFilter === 'delivered'" (click)="orderFilter = 'delivered'">تم التوصيل</button>
+              <button
+                class="pill-btn"
+                [class.active]="orderFilter === 'all'"
+                (click)="orderFilter = 'all'"
+              >
+                الكل
+              </button>
+              <button
+                class="pill-btn"
+                [class.active]="orderFilter === 'new'"
+                (click)="orderFilter = 'new'"
+              >
+                جديد ({{ newOrdersCount() }})
+              </button>
+              <button
+                class="pill-btn"
+                [class.active]="orderFilter === 'in_progress'"
+                (click)="orderFilter = 'in_progress'"
+              >
+                قيد التنفيذ
+              </button>
+              <button
+                class="pill-btn"
+                [class.active]="orderFilter === 'delivered'"
+                (click)="orderFilter = 'delivered'"
+              >
+                تم التوصيل
+              </button>
             </div>
           </div>
 
           <div class="orders-cards-list">
-            <div class="order-card" *ngFor="let ord of filteredOrders()" [class.order-new]="ord.status === 'new'">
+            <div
+              class="order-card"
+              *ngFor="let ord of filteredOrders()"
+              [class.order-new]="ord.status === 'new'"
+            >
               <div class="order-card-header">
                 <div>
                   <span class="order-num">{{ ord.orderNumber }}</span>
                   <span class="order-time">{{ ord.timeAgo }}</span>
                 </div>
-                <span class="badge" [ngClass]="'badge-' + ord.status">{{ getStatusLabel(ord.status) }}</span>
+                <span class="badge" [ngClass]="'badge-' + ord.status">{{
+                  getStatusLabel(ord.status)
+                }}</span>
               </div>
 
               <div class="customer-info-box">
                 <p class="customer-name"><strong>العميل:</strong> {{ ord.customerName }}</p>
                 <p class="customer-phone" dir="ltr">📞 {{ ord.customerPhone }}</p>
                 <p class="customer-address">📍 {{ ord.deliveryAddress }} ({{ ord.zoneName }})</p>
-                <p class="customer-notes" *ngIf="ord.notes">📝 <em>ملاحظة: {{ ord.notes }}</em></p>
+                <p class="customer-notes" *ngIf="ord.notes">
+                  📝 <em>ملاحظة: {{ ord.notes }}</em>
+                </p>
               </div>
 
               <div class="items-list-box">
@@ -111,42 +153,49 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                 </div>
                 <div class="order-totals-summary">
                   <span>المجموع: {{ ord.itemsTotal }} ج.م + توصيل: {{ ord.deliveryFee }} ج.م</span>
-                  <span class="grand-total">الإجمالي: {{ ord.grandTotal }} ج.م (كاش عند الاستلام)</span>
+                  <span class="grand-total"
+                    >الإجمالي: {{ ord.grandTotal }} ج.م (كاش عند الاستلام)</span
+                  >
                 </div>
               </div>
 
               <div class="order-actions-bar">
-                <button 
-                  *ngIf="ord.status === 'new'" 
-                  class="btn btn-success" 
-                  (click)="updateOrderStatus(ord, 'accepted')">
+                <button
+                  *ngIf="ord.status === 'new'"
+                  class="btn btn-success"
+                  (click)="updateOrderStatus(ord, 'accepted')"
+                >
                   ✅ قبول الطلب
                 </button>
-                <button 
-                  *ngIf="ord.status === 'new'" 
-                  class="btn btn-danger-outline" 
-                  (click)="openRejectModal(ord)">
+                <button
+                  *ngIf="ord.status === 'new'"
+                  class="btn btn-danger-outline"
+                  (click)="openRejectModal(ord)"
+                >
                   ❌ اعتذار / رفض
                 </button>
 
-                <button 
-                  *ngIf="ord.status === 'accepted'" 
-                  class="btn btn-primary" 
-                  (click)="updateOrderStatus(ord, 'preparing')">
+                <button
+                  *ngIf="ord.status === 'accepted'"
+                  class="btn btn-primary"
+                  (click)="updateOrderStatus(ord, 'preparing')"
+                >
                   🍳 بدء التحضير
                 </button>
 
-                <button 
-                  *ngIf="ord.status === 'preparing'" 
-                  class="btn btn-warning" 
-                  (click)="updateOrderStatus(ord, 'out_for_delivery')">
+                <button
+                  *ngIf="ord.status === 'preparing'"
+                  class="btn btn-warning"
+                  (click)="updateOrderStatus(ord, 'out_for_delivery')"
+                >
                   🛵 تسليم لمندوب المتجر (خرج للتوصيل)
                 </button>
 
-                <button 
-                  *ngIf="ord.status === 'out_for_delivery'" 
-                  class="btn btn-success" 
-                  (click)="updateOrderStatus(ord, 'delivered')">
+                <button
+                  *ngIf="ord.status === 'out_for_delivery'"
+                  class="btn btn-success"
+                  (click)="updateOrderStatus(ord, 'delivered')"
+                >
                   🎉 تأكيد استلام العميل وتحصيل الكاش
                 </button>
               </div>
@@ -161,9 +210,13 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
           <div class="section-top">
             <div>
               <h3>قائمة المنتجات والأسعار</h3>
-              <p class="subtitle">اضغط على زر التوفر لتحديد الصنف كـ (خلصان) بدون حذفه من القائمة</p>
+              <p class="subtitle">
+                اضغط على زر التوفر لتحديد الصنف كـ (خلصان) بدون حذفه من القائمة
+              </p>
             </div>
-            <button class="btn btn-primary" (click)="showNewProductModal.set(true)">+ إضافة صنف جديد</button>
+            <button class="btn btn-primary" (click)="showNewProductModal.set(true)">
+              + إضافة صنف جديد
+            </button>
           </div>
 
           <div class="table-responsive">
@@ -180,16 +233,21 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
               </thead>
               <tbody>
                 <tr *ngFor="let p of products">
-                  <td><strong>{{ p.name }}</strong></td>
+                  <td>
+                    <strong>{{ p.name }}</strong>
+                  </td>
                   <td>{{ p.categoryName || 'عام' }}</td>
-                  <td><strong>{{ p.price | number:'1.2-2' }} ج.م</strong></td>
+                  <td>
+                    <strong>{{ p.price | number: '1.2-2' }} ج.م</strong>
+                  </td>
                   <td>{{ p.description || '—' }}</td>
                   <td>
-                    <button 
-                      class="badge-toggle-btn" 
-                      [class.available]="p.is_available" 
+                    <button
+                      class="badge-toggle-btn"
+                      [class.available]="p.is_available"
                       [class.finished]="!p.is_available"
-                      (click)="toggleProductAvailability(p)">
+                      (click)="toggleProductAvailability(p)"
+                    >
                       {{ p.is_available ? 'متاح للطلب' : 'خلصان ⚠️' }}
                     </button>
                   </td>
@@ -213,7 +271,9 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
               <h4>{{ b.name }}</h4>
               <p>📍 {{ b.address }}</p>
               <p>📞 {{ b.phone }}</p>
-              <span class="status-tag" [class.active]="b.is_active">{{ b.is_active ? 'فرع نشط' : 'فرع مغلق مؤقتاً' }}</span>
+              <span class="status-tag" [class.active]="b.is_active">{{
+                b.is_active ? 'فرع نشط' : 'فرع مغلق مؤقتاً'
+              }}</span>
             </div>
           </div>
         </div>
@@ -224,20 +284,32 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         <div class="modal-dialog">
           <h4>الاعتذار عن قبول الطلب #{{ selectedOrderForRejection()?.orderNumber }}</h4>
           <p class="modal-desc">برجاء تحديد سبب الاعتذار ليظهر للعميل في شاشة التتبع فوراً.</p>
-          
+
           <div class="form-group">
             <label>سبب الاعتذار (إلزامي):</label>
             <select [(ngModel)]="rejectionReason" class="select-input">
-              <option value="نفاد أحد الأصناف المطلوبة حالياً">نفاد أحد الأصناف المطلوبة حالياً</option>
-              <option value="ضغط طلبات كثيف واكتمال طاقة المطبخ">ضغط طلبات كثيف واكتمال طاقة المطبخ</option>
+              <option value="نفاد أحد الأصناف المطلوبة حالياً">
+                نفاد أحد الأصناف المطلوبة حالياً
+              </option>
+              <option value="ضغط طلبات كثيف واكتمال طاقة المطبخ">
+                ضغط طلبات كثيف واكتمال طاقة المطبخ
+              </option>
               <option value="المحل على وشك الإغلاق">المحل على وشك الإغلاق</option>
               <option value="خارج نطاق تغطية مندوبي المحل">خارج نطاق تغطية مندوبي المحل</option>
             </select>
           </div>
 
           <div class="modal-actions">
-            <button class="btn btn-outline" (click)="selectedOrderForRejection.set(null)">تراجع</button>
-            <button class="btn btn-danger" [disabled]="!rejectionReason" (click)="confirmOrderRejection()">تأكيد الاعتذار</button>
+            <button class="btn btn-outline" (click)="selectedOrderForRejection.set(null)">
+              تراجع
+            </button>
+            <button
+              class="btn btn-danger"
+              [disabled]="!rejectionReason"
+              (click)="confirmOrderRejection()"
+            >
+              تأكيد الاعتذار
+            </button>
           </div>
         </div>
       </div>
@@ -248,19 +320,41 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
           <h4>إضافة صنف جديد للمتجر</h4>
           <div class="form-group">
             <label>اسم الصنف:</label>
-            <input type="text" [(ngModel)]="newProduct.name" class="text-input" placeholder="مثال: بيتزا مارجريتا" />
+            <input
+              type="text"
+              [(ngModel)]="newProduct.name"
+              class="text-input"
+              placeholder="مثال: بيتزا مارجريتا"
+            />
           </div>
           <div class="form-group">
             <label>السعر بالجنيه المصري (دقيق):</label>
-            <input type="number" step="0.5" [(ngModel)]="newProduct.price" class="text-input" placeholder="مثال: 65.00" />
+            <input
+              type="number"
+              step="0.5"
+              [(ngModel)]="newProduct.price"
+              class="text-input"
+              placeholder="مثال: 65.00"
+            />
           </div>
           <div class="form-group">
             <label>الوصف:</label>
-            <textarea [(ngModel)]="newProduct.description" class="text-input" rows="2" placeholder="مكونات الصنف..."></textarea>
+            <textarea
+              [(ngModel)]="newProduct.description"
+              class="text-input"
+              rows="2"
+              placeholder="مكونات الصنف..."
+            ></textarea>
           </div>
           <div class="modal-actions">
             <button class="btn btn-outline" (click)="showNewProductModal.set(false)">إلغاء</button>
-            <button class="btn btn-primary" [disabled]="!newProduct.name || !newProduct.price" (click)="saveNewProduct()">حفظ الصنف</button>
+            <button
+              class="btn btn-primary"
+              [disabled]="!newProduct.name || !newProduct.price"
+              (click)="saveNewProduct()"
+            >
+              حفظ الصنف
+            </button>
           </div>
         </div>
       </div>
@@ -402,7 +496,9 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         margin-top: 0.25rem;
         display: block;
       }
-      .orders-section, .products-section, .card-section {
+      .orders-section,
+      .products-section,
+      .card-section {
         background: #ffffff;
         border-radius: 12px;
         border: 1px solid var(--color-border);
@@ -522,28 +618,82 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         cursor: pointer;
         border: none;
       }
-      .btn-primary { background: var(--color-primary); color: #fff; }
-      .btn-success { background: #38a169; color: #fff; }
-      .btn-warning { background: #dd6b20; color: #fff; }
-      .btn-danger { background: #e53e3e; color: #fff; }
-      .btn-danger-outline { background: transparent; border: 1px solid #feb2b2; color: #c53030; }
-      .btn-outline { background: transparent; border: 1px solid var(--color-border); color: var(--color-text); }
-      .btn-sm { padding: 0.35rem 0.65rem; font-size: 0.85rem; }
+      .btn-primary {
+        background: var(--color-primary);
+        color: #fff;
+      }
+      .btn-success {
+        background: #38a169;
+        color: #fff;
+      }
+      .btn-warning {
+        background: #dd6b20;
+        color: #fff;
+      }
+      .btn-danger {
+        background: #e53e3e;
+        color: #fff;
+      }
+      .btn-danger-outline {
+        background: transparent;
+        border: 1px solid #feb2b2;
+        color: #c53030;
+      }
+      .btn-outline {
+        background: transparent;
+        border: 1px solid var(--color-border);
+        color: var(--color-text);
+      }
+      .btn-sm {
+        padding: 0.35rem 0.65rem;
+        font-size: 0.85rem;
+      }
       .badge {
         padding: 0.25rem 0.65rem;
         border-radius: 4px;
         font-size: 0.8rem;
         font-weight: 600;
       }
-      .badge-new { background: #feebc8; color: #744210; }
-      .badge-accepted, .badge-delivered { background: #c6f6d5; color: #22543d; }
-      .badge-preparing { background: #bee3f8; color: #2b6cb0; }
-      .badge-out_for_delivery { background: #fed7d7; color: #742a2a; }
-      .badge-cancelled, .badge-rejected { background: #edf2f7; color: #4a5568; }
-      .table-responsive { overflow-x: auto; }
-      .data-table { width: 100%; border-collapse: collapse; text-align: right; }
-      .data-table th, .data-table td { padding: 0.85rem 1rem; border-bottom: 1px solid var(--color-border); font-size: 0.9rem; }
-      .data-table th { background: #faf8f2; color: var(--color-text-muted); }
+      .badge-new {
+        background: #feebc8;
+        color: #744210;
+      }
+      .badge-accepted,
+      .badge-delivered {
+        background: #c6f6d5;
+        color: #22543d;
+      }
+      .badge-preparing {
+        background: #bee3f8;
+        color: #2b6cb0;
+      }
+      .badge-out_for_delivery {
+        background: #fed7d7;
+        color: #742a2a;
+      }
+      .badge-cancelled,
+      .badge-rejected {
+        background: #edf2f7;
+        color: #4a5568;
+      }
+      .table-responsive {
+        overflow-x: auto;
+      }
+      .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: right;
+      }
+      .data-table th,
+      .data-table td {
+        padding: 0.85rem 1rem;
+        border-bottom: 1px solid var(--color-border);
+        font-size: 0.9rem;
+      }
+      .data-table th {
+        background: #faf8f2;
+        color: var(--color-text-muted);
+      }
       .badge-toggle-btn {
         padding: 0.3rem 0.75rem;
         border-radius: 20px;
@@ -552,21 +702,90 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         font-weight: 600;
         font-size: 0.85rem;
       }
-      .badge-toggle-btn.available { background: #c6f6d5; color: #22543d; }
-      .badge-toggle-btn.finished { background: #fed7d7; color: #742a2a; }
-      .branches-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top: 1rem; }
-      .branch-card { border: 1px solid var(--color-border); border-radius: 8px; padding: 1rem; }
-      .branch-card h4 { margin: 0 0 0.5rem; color: var(--color-primary); }
-      .branch-card p { margin: 0.25rem 0; font-size: 0.88rem; color: var(--color-text-muted); }
-      .status-tag { padding: 0.2rem 0.55rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; background: #cbd5e0; }
-      .status-tag.active { background: #c6f6d5; color: #22543d; }
-      .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-      .modal-dialog { background: #fff; padding: 1.75rem; border-radius: 12px; width: 100%; max-width: 480px; }
-      .modal-desc { font-size: 0.88rem; color: var(--color-text-muted); margin: 0.5rem 0 1.25rem; }
-      .form-group { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1rem; }
-      .form-group label { font-weight: 600; font-size: 0.9rem; }
-      .text-input, .select-input { padding: 0.5rem 0.85rem; border: 1px solid var(--color-border); border-radius: 6px; font-family: inherit; font-size: 0.9rem; }
-      .modal-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.25rem; }
+      .badge-toggle-btn.available {
+        background: #c6f6d5;
+        color: #22543d;
+      }
+      .badge-toggle-btn.finished {
+        background: #fed7d7;
+        color: #742a2a;
+      }
+      .branches-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+      }
+      .branch-card {
+        border: 1px solid var(--color-border);
+        border-radius: 8px;
+        padding: 1rem;
+      }
+      .branch-card h4 {
+        margin: 0 0 0.5rem;
+        color: var(--color-primary);
+      }
+      .branch-card p {
+        margin: 0.25rem 0;
+        font-size: 0.88rem;
+        color: var(--color-text-muted);
+      }
+      .status-tag {
+        padding: 0.2rem 0.55rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        background: #cbd5e0;
+      }
+      .status-tag.active {
+        background: #c6f6d5;
+        color: #22543d;
+      }
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+      .modal-dialog {
+        background: #fff;
+        padding: 1.75rem;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 480px;
+      }
+      .modal-desc {
+        font-size: 0.88rem;
+        color: var(--color-text-muted);
+        margin: 0.5rem 0 1.25rem;
+      }
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        margin-bottom: 1rem;
+      }
+      .form-group label {
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+      .text-input,
+      .select-input {
+        padding: 0.5rem 0.85rem;
+        border: 1px solid var(--color-border);
+        border-radius: 6px;
+        font-family: inherit;
+        font-size: 0.9rem;
+      }
+      .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        margin-top: 1.25rem;
+      }
     `,
   ],
 })
@@ -616,7 +835,7 @@ export class MerchantDashboardComponent {
       id: 1,
       name: 'وجبة كباب وكفتة مشوي على الفحم',
       categoryName: 'مشويات',
-      price: 130.00,
+      price: 130.0,
       description: 'نصف كيلو كفتة وكباب مع أرز وطحينة وسلطة خضراء وعيش بلدي',
       is_available: true,
     },
@@ -624,7 +843,7 @@ export class MerchantDashboardComponent {
       id: 2,
       name: 'ساندوتش كفتة قناوي',
       categoryName: 'سندوتشات',
-      price: 45.00,
+      price: 45.0,
       description: 'عيش بلدي سخن مع طحينة وخضار',
       is_available: true,
     },
@@ -632,7 +851,7 @@ export class MerchantDashboardComponent {
       id: 3,
       name: 'طاجن بامية باللحمة البلدي',
       categoryName: 'طواجن',
-      price: 110.00,
+      price: 110.0,
       description: 'طاجن فخار بامية صعيدي مسبكة بلحمة طازة',
       is_available: false, // خلصان
     },
@@ -649,12 +868,12 @@ export class MerchantDashboardComponent {
       notes: 'الرجاء الاتصال عند الوصول',
       status: 'new',
       timeAgo: 'منذ 3 دقائق',
-      itemsTotal: 175.00,
-      deliveryFee: 15.00,
-      grandTotal: 190.00,
+      itemsTotal: 175.0,
+      deliveryFee: 15.0,
+      grandTotal: 190.0,
       items: [
-        { name: 'وجبة كباب وكفتة مشوي على الفحم', quantity: 1, price: 130.00 },
-        { name: 'ساندوتش كفتة قناوي', quantity: 1, price: 45.00 },
+        { name: 'وجبة كباب وكفتة مشوي على الفحم', quantity: 1, price: 130.0 },
+        { name: 'ساندوتش كفتة قناوي', quantity: 1, price: 45.0 },
       ],
     },
     {
@@ -667,12 +886,10 @@ export class MerchantDashboardComponent {
       notes: '',
       status: 'preparing',
       timeAgo: 'منذ 18 دقيقة',
-      itemsTotal: 90.00,
-      deliveryFee: 15.00,
-      grandTotal: 105.00,
-      items: [
-        { name: 'ساندوتش كفتة قناوي', quantity: 2, price: 45.00 },
-      ],
+      itemsTotal: 90.0,
+      deliveryFee: 15.0,
+      grandTotal: 105.0,
+      items: [{ name: 'ساندوتش كفتة قناوي', quantity: 2, price: 45.0 }],
     },
     {
       id: 103,
@@ -684,38 +901,42 @@ export class MerchantDashboardComponent {
       notes: '',
       status: 'delivered',
       timeAgo: 'منذ ساعة',
-      itemsTotal: 260.00,
-      deliveryFee: 12.00,
-      grandTotal: 272.00,
-      items: [
-        { name: 'وجبة كباب وكفتة مشوي على الفحم', quantity: 2, price: 130.00 },
-      ],
+      itemsTotal: 260.0,
+      deliveryFee: 12.0,
+      grandTotal: 272.0,
+      items: [{ name: 'وجبة كباب وكفتة مشوي على الفحم', quantity: 2, price: 130.0 }],
     },
   ];
 
   newOrdersCount() {
-    return this.orders.filter(o => o.status === 'new').length;
+    return this.orders.filter((o) => o.status === 'new').length;
   }
 
   activeOrdersCount() {
-    return this.orders.filter(o => ['accepted', 'preparing', 'out_for_delivery'].includes(o.status)).length;
+    return this.orders.filter((o) =>
+      ['accepted', 'preparing', 'out_for_delivery'].includes(o.status),
+    ).length;
   }
 
   completedOrdersCount() {
-    return this.orders.filter(o => o.status === 'delivered').length;
+    return this.orders.filter((o) => o.status === 'delivered').length;
   }
 
   todayCashTotal() {
     return this.orders
-      .filter(o => o.status === 'delivered')
+      .filter((o) => o.status === 'delivered')
       .reduce((sum, o) => sum + o.grandTotal, 0);
   }
 
   filteredOrders() {
     if (this.orderFilter === 'all') return this.orders;
-    if (this.orderFilter === 'new') return this.orders.filter(o => o.status === 'new');
-    if (this.orderFilter === 'in_progress') return this.orders.filter(o => ['accepted', 'preparing', 'out_for_delivery'].includes(o.status));
-    if (this.orderFilter === 'delivered') return this.orders.filter(o => o.status === 'delivered');
+    if (this.orderFilter === 'new') return this.orders.filter((o) => o.status === 'new');
+    if (this.orderFilter === 'in_progress')
+      return this.orders.filter((o) =>
+        ['accepted', 'preparing', 'out_for_delivery'].includes(o.status),
+      );
+    if (this.orderFilter === 'delivered')
+      return this.orders.filter((o) => o.status === 'delivered');
     return this.orders;
   }
 
