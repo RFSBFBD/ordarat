@@ -21,6 +21,10 @@ class OrderPolicy
             return $order->store->users()->where('users.id', $user->id)->exists();
         }
 
+        if ($user->isBranchManager()) {
+            return $order->branch_id === $user->managedBranch()?->id;
+        }
+
         return false;
     }
 
@@ -32,6 +36,10 @@ class OrderPolicy
 
         if ($user->isMerchant()) {
             return $order->store->users()->where('users.id', $user->id)->exists();
+        }
+
+        if ($user->isBranchManager()) {
+            return $order->branch_id === $user->managedBranch()?->id;
         }
 
         return false;

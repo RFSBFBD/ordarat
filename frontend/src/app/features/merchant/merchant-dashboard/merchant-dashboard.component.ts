@@ -73,6 +73,40 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
 
       <!-- TAB 1: ORDERS QUEUE -->
       <div *ngIf="activeTab() === 'orders'">
+        <!-- Branch Cards Summary Overview -->
+        <div class="branches-overview-section" *ngIf="branches.length > 0">
+          <div class="section-subtitle-row">
+            <h4>📍 نظرة عامة على فروع المتجر في قنا</h4>
+            <span class="hint-text">تُوجّه الطلبات تلقائياً لأقرب فرع لموقع العميل</span>
+          </div>
+          <div class="branch-summary-cards">
+            <div class="branch-summary-card" *ngFor="let b of branches">
+              <div class="bsc-header">
+                <strong>{{ b.name }}</strong>
+                <span class="bsc-status" [class.open]="b.is_accepting_orders">
+                  {{ b.is_accepting_orders ? 'مفتوح للطلبات' : 'مغلق مؤقتاً' }}
+                </span>
+              </div>
+              <div class="bsc-body">
+                <p>⏰ مواعيد العمل: {{ b.working_hours.open }} - {{ b.working_hours.close }}</p>
+                <p>
+                  🔔 طلبات الفرع الجديدة: <strong>{{ getBranchNewOrdersCount(b.id) }}</strong>
+                </p>
+              </div>
+              <div class="bsc-footer">
+                <button
+                  class="btn btn-sm"
+                  [class.btn-warning]="b.is_accepting_orders"
+                  [class.btn-success]="!b.is_accepting_orders"
+                  (click)="toggleBranchReceiving(b)"
+                >
+                  {{ b.is_accepting_orders ? 'إيقاف استقبال الطلبات' : 'فتح استقبال الطلبات' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Stats Grid -->
         <div class="stats-grid">
           <div class="stat-card alert-stat" [class.has-new]="newOrdersCount() > 0">
@@ -95,7 +129,16 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
 
         <div class="orders-section">
           <div class="section-top">
-            <h3>الطلبات المباشرة</h3>
+            <div class="section-title-wrap">
+              <h3>الطلبات المباشرة ({{ filteredOrders().length }})</h3>
+              <div class="branch-selector-wrap" *ngIf="branches.length > 0">
+                <label>فرع الطلبات:</label>
+                <select [(ngModel)]="selectedBranchFilter" class="select-input select-sm">
+                  <option value="all">كل الفروع ({{ branches.length }})</option>
+                  <option *ngFor="let b of branches" [value]="b.id.toString()">{{ b.name }}</option>
+                </select>
+              </div>
+            </div>
             <div class="filter-pills">
               <button
                 class="pill-btn"
@@ -128,16 +171,17 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
             </div>
           </div>
 
-          <div class="orders-cards-list">
+          <div class="orders-cards-list" *ngIf="filteredOrders().length > 0">
             <div
               class="order-card"
               *ngFor="let ord of filteredOrders()"
               [class.order-new]="ord.status === 'new'"
             >
               <div class="order-card-header">
-                <div>
+                <div class="order-id-wrap">
                   <span class="order-num">{{ ord.orderNumber }}</span>
                   <span class="order-time">{{ ord.timeAgo }}</span>
+                  <span class="branch-pill">📍 {{ ord.branchName || 'فرع غير محدد' }}</span>
                 </div>
                 <span class="badge" [ngClass]="'badge-' + ord.status">{{
                   getStatusLabel(ord.status)
@@ -271,17 +315,34 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
       <!-- TAB 3: BRANCHES & HOURS -->
       <div *ngIf="activeTab() === 'branches'">
         <div class="card-section">
-          <h3>فروع المتجر في مدينة قنا</h3>
-          <p class="subtitle">عند طلب العميل، يحدد النظام أقرب فرع لموقع العميل تلقائياً</p>
-          <div class="branches-grid">
+          <div class="section-top">
+            <div>
+              <h3>فروع المتجر في مدينة قنا</h3>
+              <p class="subtitle">
+                عند طلب العميل، يحدد النظام أقرب فرع لموقع العميل تلقائياً ويوجّه الطلب إليه
+              </p>
+            </div>
+          </div>
+
+          <div class="branches-grid" *ngIf="branches.length > 0">
             <div class="branch-card" *ngFor="let b of branches">
               <h4>{{ b.name }}</h4>
               <p>📍 {{ b.address }}</p>
               <p>📞 {{ b.phone }}</p>
-              <span class="status-tag" [class.active]="b.is_active">{{
-                b.is_active ? 'فرع نشط' : 'فرع مغلق مؤقتاً'
-              }}</span>
+              <p>⏰ مواعيد العمل: {{ b.working_hours.open }} - {{ b.working_hours.close }}</p>
+              <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; align-items: center;">
+                <span class="status-tag" [class.active]="b.is_accepting_orders">
+                  {{ b.is_accepting_orders ? 'يستقبل الطلبات' : 'موقف مؤقتاً' }}
+                </span>
+                <button class="btn btn-sm btn-outline" (click)="toggleBranchReceiving(b)">
+                  {{ b.is_accepting_orders ? 'إيقاف' : 'تشغيل' }}
+                </button>
+              </div>
             </div>
+          </div>
+
+          <div class="empty-branches-state" *ngIf="branches.length === 0">
+            <p>{{ t.store.branches.emptyBranches }}</p>
           </div>
         </div>
       </div>
@@ -566,6 +627,106 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         border: 1px solid var(--color-border);
         padding: 1.5rem;
         margin-bottom: 2rem;
+      }
+      .branches-overview-section {
+        background: #ffffff;
+        border: 1px solid var(--color-border);
+        border-radius: 12px;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 1.5rem;
+      }
+      .section-subtitle-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+      .section-subtitle-row h4 {
+        margin: 0;
+        font-family: var(--font-heading);
+        color: var(--color-primary);
+        font-size: 1.15rem;
+      }
+      .hint-text {
+        font-size: 0.82rem;
+        color: var(--color-text-muted);
+      }
+      .branch-summary-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 1rem;
+      }
+      .branch-summary-card {
+        background: #fdfbf7;
+        border: 1px solid var(--color-border);
+        border-radius: 10px;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 0.75rem;
+      }
+      .bsc-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .bsc-status {
+        font-size: 0.78rem;
+        font-weight: 700;
+        padding: 0.2rem 0.55rem;
+        border-radius: 4px;
+        background: #fed7d7;
+        color: #742a2a;
+      }
+      .bsc-status.open {
+        background: #c6f6d5;
+        color: #22543d;
+      }
+      .bsc-body p {
+        margin: 0.25rem 0;
+        font-size: 0.85rem;
+        color: var(--color-text-muted);
+      }
+      .section-title-wrap {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+      .branch-selector-wrap {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.88rem;
+        font-weight: 600;
+      }
+      .select-sm {
+        padding: 0.35rem 0.65rem;
+        font-size: 0.85rem;
+      }
+      .order-id-wrap {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        flex-wrap: wrap;
+      }
+      .branch-pill {
+        background: #e2e8f0;
+        color: #2d3748;
+        padding: 0.2rem 0.55rem;
+        border-radius: 4px;
+        font-size: 0.78rem;
+        font-weight: 600;
+      }
+      .empty-orders-state,
+      .empty-branches-state {
+        text-align: center;
+        padding: 2.5rem 1rem;
+        color: var(--color-text-muted);
+        font-size: 0.95rem;
       }
       .section-top {
         display: flex;
@@ -860,6 +1021,7 @@ export class MerchantDashboardComponent {
   selectedOrderForRejection = signal<any | null>(null);
 
   orderFilter = 'all';
+  selectedBranchFilter = 'all';
   rejectionReason = 'نفاد أحد الأصناف المطلوبة حالياً';
 
   currentStore = {
@@ -882,6 +1044,8 @@ export class MerchantDashboardComponent {
       address: 'شارع الجمهورية - أمام المحطة، قنا',
       phone: '01012345678',
       is_active: true,
+      is_accepting_orders: true,
+      working_hours: { open: '09:00 ص', close: '11:00 م' },
     },
     {
       id: 2,
@@ -889,6 +1053,8 @@ export class MerchantDashboardComponent {
       address: 'طريق مصر أسوان الزراعي، قنا',
       phone: '01099887766',
       is_active: true,
+      is_accepting_orders: true,
+      working_hours: { open: '10:00 ص', close: '12:00 م' },
     },
   ];
 
@@ -934,6 +1100,8 @@ export class MerchantDashboardComponent {
     {
       id: 101,
       orderNumber: 'ORD-QNA-501',
+      branchId: 1,
+      branchName: 'فرع وسط البلد',
       customerName: 'محمود حسن',
       customerPhone: '01098765432',
       deliveryAddress: 'شارع الهلال الأحمر، بجوار مسجد سيدي عبد الرحيم القنائي',
@@ -952,6 +1120,8 @@ export class MerchantDashboardComponent {
     {
       id: 102,
       orderNumber: 'ORD-QNA-502',
+      branchId: 2,
+      branchName: 'فرع المعنا',
       customerName: 'إبراهيم ناصر',
       customerPhone: '01122334455',
       deliveryAddress: 'مساكن عثمان، شقة 4',
@@ -967,6 +1137,8 @@ export class MerchantDashboardComponent {
     {
       id: 103,
       orderNumber: 'ORD-QNA-498',
+      branchId: 1,
+      branchName: 'فرع وسط البلد',
       customerName: 'ياسر فاروق',
       customerPhone: '01233445566',
       deliveryAddress: 'حي المصالح، قنا',
@@ -980,6 +1152,14 @@ export class MerchantDashboardComponent {
       items: [{ name: 'وجبة كباب وكفتة مشوي على الفحم', quantity: 2, price: 130.0 }],
     },
   ];
+
+  getBranchNewOrdersCount(branchId: number): number {
+    return this.orders.filter((o) => o.branchId === branchId && o.status === 'new').length;
+  }
+
+  toggleBranchReceiving(branch: any) {
+    branch.is_accepting_orders = !branch.is_accepting_orders;
+  }
 
   newOrdersCount() {
     return this.orders.filter((o) => o.status === 'new').length;
@@ -1002,15 +1182,21 @@ export class MerchantDashboardComponent {
   }
 
   filteredOrders() {
-    if (this.orderFilter === 'all') return this.orders;
-    if (this.orderFilter === 'new') return this.orders.filter((o) => o.status === 'new');
-    if (this.orderFilter === 'in_progress')
-      return this.orders.filter((o) =>
-        ['accepted', 'preparing', 'out_for_delivery'].includes(o.status),
-      );
-    if (this.orderFilter === 'delivered')
-      return this.orders.filter((o) => o.status === 'delivered');
-    return this.orders;
+    let result = this.orders;
+    if (this.selectedBranchFilter !== 'all') {
+      const bId = Number(this.selectedBranchFilter);
+      result = result.filter((o) => o.branchId === bId);
+    }
+    if (this.orderFilter === 'new') {
+      return result.filter((o) => o.status === 'new');
+    }
+    if (this.orderFilter === 'in_progress') {
+      return result.filter((o) => ['accepted', 'preparing', 'out_for_delivery'].includes(o.status));
+    }
+    if (this.orderFilter === 'delivered') {
+      return result.filter((o) => o.status === 'delivered');
+    }
+    return result;
   }
 
   getStatusLabel(status: string): string {

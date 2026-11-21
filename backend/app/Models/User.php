@@ -50,6 +50,11 @@ class User extends Authenticatable
         return $this->role === 'customer';
     }
 
+    public function isBranchManager(): bool
+    {
+        return $this->role === 'branch_manager';
+    }
+
     public function isActive(): bool
     {
         return $this->status === 'active';
@@ -58,6 +63,16 @@ class User extends Authenticatable
     public function stores(): BelongsToMany
     {
         return $this->belongsToMany(Store::class, 'store_user')->withTimestamps();
+    }
+
+    public function managedBranches(): BelongsToMany
+    {
+        return $this->belongsToMany(Branch::class, 'branch_user')->withTimestamps();
+    }
+
+    public function managedBranch(): ?Branch
+    {
+        return $this->managedBranches()->first();
     }
 
     public function orders(): HasMany

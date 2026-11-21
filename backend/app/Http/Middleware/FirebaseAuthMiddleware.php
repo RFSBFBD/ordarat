@@ -21,8 +21,10 @@ class FirebaseAuthMiddleware
 
     public function handle(Request $request, Closure $next): Response
     {
-        // If user already authenticated via test helper actingAs(), proceed
-        if (Auth::check() || $request->user()) {
+        $authHeader = $request->header('Authorization');
+
+        // If no Bearer token provided, check if user authenticated via test helper actingAs()
+        if ((! $authHeader || ! str_starts_with($authHeader, 'Bearer ')) && (Auth::check() || $request->user())) {
             $user = $request->user()->fresh() ?: $request->user();
             if ($user && ! $user->isActive()) {
                 return response()->json([
@@ -37,7 +39,6 @@ class FirebaseAuthMiddleware
             return $next($request);
         }
 
-        $authHeader = $request->header('Authorization');
         if (! $authHeader || ! str_starts_with($authHeader, 'Bearer ')) {
             return response()->json([
                 'success' => false,

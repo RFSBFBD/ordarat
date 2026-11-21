@@ -37,7 +37,7 @@ class CheckoutService
 
         $store = Store::where('id', $storeId)->where('is_active', true)->firstOrFail();
         if (! $store->is_accepting_orders) {
-            throw new Exception('المتجر مغلق حالياً ولا يستقبل طلبات جديدة');
+            throw new Exception('النشاط ده مقفول دلوقتي، جرّب بعدين');
         }
 
         $branch = $this->findClosestBranch($store, $latitude, $longitude);
@@ -146,11 +146,21 @@ class CheckoutService
         }
     }
 
+    /**
+     * Finds the closest active branch currently accepting orders.
+     * Distance: Approximate direct line distance (Haversine formula).
+     * Tie-breaking rule: If two branches have equal distance (within 10m), the oldest branch (lowest ID) is selected.
+     */
     protected function findClosestBranch(Store $store, float $lat, float $lon): Branch
     {
-        $branches = $store->branches()->where('is_active', true)->get();
+        $branches = $store->branches()
+            ->where('is_active', true)
+            ->where('is_accepting_orders', true)
+            ->orderBy('id', 'asc') // Declared tie-breaking baseline: oldest branch first
+            ->get();
+
         if ($branches->isEmpty()) {
-            throw new Exception('لا توجد فروع نشطة ومتاحة لهذا المتجر حالياً');
+            throw new Exception('النشاط ده مقفول دلوقتي، جرّب بعدين');
         }
 
         $closest = null;
@@ -161,9 +171,16 @@ class CheckoutService
             $branchLon = $branch->longitude ?? 32.7181;
 
             $dist = $this->haversineGreatCircleDistance($lat, $lon, $branchLat, $branchLon);
-            if ($dist < $minDist) {
+
+            // If strictly closer (by at least 10 meters / 0.01 km)
+            if ($dist < ($minDist - 0.01)) {
                 $minDist = $dist;
                 $closest = $branch;
+            } elseif (abs($dist - $minDist) <= 0.01 && $closest !== null) {
+                // Tie-breaking: select the oldest branch by lowest ID
+                if ($branch->id < $closest->id) {
+                    $closest = $branch;
+                }
             }
         }
 

@@ -7,6 +7,7 @@ import { OrderTrackingComponent } from './features/customer/order-tracking/order
 import { MerchantDashboardComponent } from './features/merchant/merchant-dashboard/merchant-dashboard.component';
 import { MerchantInfoComponent } from './features/merchant/merchant-info/merchant-info.component';
 import { AdminDashboardComponent } from './features/admin/admin-dashboard/admin-dashboard.component';
+import { BranchDashboardComponent } from './features/branch/branch-dashboard/branch-dashboard.component';
 import { LoginComponent } from './features/auth/login/login.component';
 
 export const routes: Routes = [
@@ -31,6 +32,15 @@ export const routes: Routes = [
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: 'dashboard', component: MerchantDashboardComponent },
+    ],
+  },
+
+  // 3b. Branch Manager Zone
+  {
+    path: 'branch',
+    children: [
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: 'dashboard', component: BranchDashboardComponent },
     ],
   },
 

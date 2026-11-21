@@ -45,6 +45,13 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         </button>
         <button
           class="tab-btn"
+          [class.active]="activeTab() === 'branch_managers'"
+          (click)="activeTab.set('branch_managers')"
+        >
+          {{ t.admin.branchManagers.tabTitle }} ({{ branchManagers.length }})
+        </button>
+        <button
+          class="tab-btn"
           [class.active]="activeTab() === 'settings'"
           (click)="activeTab.set('settings')"
         >
@@ -235,6 +242,71 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         </div>
       </div>
 
+      <!-- TAB 3b: BRANCH MANAGERS PROVISIONING (Admin Only) -->
+      <div class="card-section" *ngIf="activeTab() === 'branch_managers'">
+        <div class="section-title-row">
+          <div>
+            <h3>{{ t.admin.branchManagers.title }}</h3>
+            <p class="subtitle">حسابات مسؤولي الفروع تُنشأ وتُدار حصراً بواسطة إدارة المنصة</p>
+          </div>
+          <button class="btn btn-primary" (click)="openBranchManagerModal()">
+            + {{ t.admin.branchManagers.addBtn }}
+          </button>
+        </div>
+
+        <div class="table-responsive" *ngIf="branchManagers.length > 0">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>{{ t.admin.branchManagers.managerName }}</th>
+                <th>{{ t.admin.branchManagers.phone }}</th>
+                <th>{{ t.admin.branchManagers.email }}</th>
+                <th>{{ t.admin.branchManagers.branchSelect }}</th>
+                <th>المتجر</th>
+                <th>حالة الحساب</th>
+                <th>الإجراء</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let bm of branchManagers">
+                <td>
+                  <strong>{{ bm.name }}</strong>
+                </td>
+                <td dir="ltr">{{ bm.phone }}</td>
+                <td>{{ bm.email }}</td>
+                <td>
+                  <span class="branch-pill">📍 {{ bm.branchName }}</span>
+                </td>
+                <td>{{ bm.storeName }}</td>
+                <td>
+                  <span class="status-tag" [class.active]="bm.status === 'active'">
+                    {{ bm.status === 'active' ? 'نشط' : 'معطل' }}
+                  </span>
+                </td>
+                <td>
+                  <button
+                    class="btn btn-sm"
+                    [class.btn-danger]="bm.status === 'active'"
+                    [class.btn-outline]="bm.status !== 'active'"
+                    (click)="toggleBranchManagerStatus(bm)"
+                  >
+                    {{
+                      bm.status === 'active'
+                        ? t.admin.branchManagers.suspendManager
+                        : t.admin.branchManagers.activateManager
+                    }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="empty-state" *ngIf="branchManagers.length === 0">
+          <p>{{ t.admin.branchManagers.emptyList }}</p>
+        </div>
+      </div>
+
       <!-- TAB 4: SYSTEM SETTINGS & ZONES -->
       <div class="card-section" *ngIf="activeTab() === 'settings'">
         <div class="section-title-row">
@@ -333,6 +405,68 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
               (click)="confirmStatusOverride()"
             >
               تأكيد التعديل
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL: CREATE BRANCH MANAGER -->
+      <div class="modal-backdrop" *ngIf="showNewBranchManagerModal()">
+        <div class="modal-dialog">
+          <h4>{{ t.admin.branchManagers.addBtn }}</h4>
+          <p class="modal-desc">
+            حساب مسؤول الفرع يمنحه صلاحية إدارة واستقبال طلبات الفرع المخصص له فقط.
+          </p>
+
+          <div class="form-group">
+            <label>{{ t.admin.branchManagers.managerName }} *</label>
+            <input
+              type="text"
+              [(ngModel)]="newManager.name"
+              class="text-input"
+              placeholder="مثال: يوسف محمود"
+            />
+          </div>
+
+          <div class="form-group">
+            <label>{{ t.admin.branchManagers.email }} *</label>
+            <input
+              type="email"
+              [(ngModel)]="newManager.email"
+              class="text-input"
+              placeholder="manager@example.com"
+            />
+          </div>
+
+          <div class="form-group">
+            <label>{{ t.admin.branchManagers.phone }} *</label>
+            <input
+              type="tel"
+              [(ngModel)]="newManager.phone"
+              class="text-input"
+              placeholder="01012345678"
+              maxlength="11"
+            />
+          </div>
+
+          <div class="form-group">
+            <label>{{ t.admin.branchManagers.branchSelect }} *</label>
+            <select [(ngModel)]="newManager.branchId" class="select-input">
+              <option value="">-- {{ t.admin.branchManagers.selectBranchPrompt }} --</option>
+              <option *ngFor="let b of availableBranches" [value]="b.id">
+                {{ b.name }} ({{ b.storeName }})
+              </option>
+            </select>
+          </div>
+
+          <div *ngIf="managerCreationError" class="error-msg-box">
+            ⚠️ {{ managerCreationError }}
+          </div>
+
+          <div class="modal-actions">
+            <button class="btn btn-outline" (click)="closeBranchManagerModal()">إلغاء</button>
+            <button class="btn btn-primary" (click)="createBranchManager()">
+              حفظ وإنشاء الحساب
             </button>
           </div>
         </div>
@@ -618,20 +752,81 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         gap: 0.75rem;
         margin-top: 1.5rem;
       }
+      .branch-pill {
+        background: #e2e8f0;
+        color: #2d3748;
+        padding: 0.2rem 0.55rem;
+        border-radius: 4px;
+        font-size: 0.78rem;
+        font-weight: 600;
+      }
+      .error-msg-box {
+        margin-top: 0.75rem;
+        padding: 0.65rem 0.85rem;
+        background: #fff5f5;
+        border: 1px solid #feb2b2;
+        border-radius: 6px;
+        color: #c53030;
+        font-size: 0.88rem;
+      }
+      .empty-state {
+        text-align: center;
+        padding: 2.5rem 1rem;
+        color: var(--color-text-muted);
+        font-size: 0.95rem;
+      }
     `,
   ],
 })
 export class AdminDashboardComponent {
   protected readonly t = AR_TRANSLATIONS;
 
-  activeTab = signal<'stores' | 'orders' | 'customers' | 'settings'>('stores');
+  activeTab = signal<'stores' | 'orders' | 'customers' | 'branch_managers' | 'settings'>('stores');
   showNewStoreModal = signal<boolean>(false);
+  showNewBranchManagerModal = signal<boolean>(false);
   selectedOrderForOverride = signal<any | null>(null);
 
   orderStatusFilter = 'all';
   customerSearchQuery = '';
   overrideNewStatus = 'cancelled';
   overrideReason = '';
+  managerCreationError = '';
+
+  newManager = {
+    name: '',
+    email: '',
+    phone: '',
+    branchId: '',
+  };
+
+  availableBranches = [
+    { id: 1, name: 'فرع وسط البلد', storeName: 'مطعم الكرنك' },
+    { id: 2, name: 'فرع المعنا', storeName: 'مطعم الكرنك' },
+    { id: 3, name: 'فرع سيدي عبد الرحيم', storeName: 'بقالة الأمانة' },
+  ];
+
+  branchManagers = [
+    {
+      id: 1,
+      name: 'يوسف محمود',
+      phone: '01011223344',
+      email: 'youssef@karank.com',
+      branchId: 1,
+      branchName: 'فرع وسط البلد',
+      storeName: 'مطعم الكرنك',
+      status: 'active',
+    },
+    {
+      id: 2,
+      name: 'عمر القنائي',
+      phone: '01199887766',
+      email: 'omar@karank.com',
+      branchId: 2,
+      branchName: 'فرع المعنا',
+      storeName: 'مطعم الكرنك',
+      status: 'active',
+    },
+  ];
 
   settings = {
     subscription_contact_number: '+201055370118',
@@ -776,6 +971,85 @@ export class AdminDashboardComponent {
       ord.status = this.overrideNewStatus;
       ord.isDelayed = false;
       this.selectedOrderForOverride.set(null);
+    }
+  }
+
+  openBranchManagerModal() {
+    this.newManager = { name: '', email: '', phone: '', branchId: '' };
+    this.managerCreationError = '';
+    this.showNewBranchManagerModal.set(true);
+  }
+
+  closeBranchManagerModal() {
+    this.showNewBranchManagerModal.set(false);
+    this.managerCreationError = '';
+  }
+
+  createBranchManager() {
+    this.managerCreationError = '';
+
+    if (
+      !this.newManager.name.trim() ||
+      !this.newManager.email.trim() ||
+      !this.newManager.phone.trim()
+    ) {
+      this.managerCreationError = 'يرجى استكمال جميع بيانات المسؤول المطلوبة';
+      return;
+    }
+
+    if (!this.newManager.branchId) {
+      this.managerCreationError = this.t.admin.branchManagers.branchRequired;
+      return;
+    }
+
+    // Check Egyptian phone
+    if (!/^01[0125][0-9]{8}$/.test(this.newManager.phone.trim())) {
+      this.managerCreationError = this.t.customer.checkout.phoneInvalid;
+      return;
+    }
+
+    // Check duplicate email or phone
+    const exists = this.branchManagers.some(
+      (bm) =>
+        bm.email.toLowerCase() === this.newManager.email.trim().toLowerCase() ||
+        bm.phone === this.newManager.phone.trim(),
+    );
+    if (exists) {
+      this.managerCreationError = this.t.admin.branchManagers.accountExists;
+      return;
+    }
+
+    const branch = this.availableBranches.find((b) => b.id === Number(this.newManager.branchId));
+    if (!branch) {
+      this.managerCreationError = this.t.admin.branchManagers.branchRequired;
+      return;
+    }
+
+    const created = {
+      id: Date.now(),
+      name: this.newManager.name.trim(),
+      email: this.newManager.email.trim(),
+      phone: this.newManager.phone.trim(),
+      branchId: branch.id,
+      branchName: branch.name,
+      storeName: branch.storeName,
+      status: 'active',
+    };
+
+    this.branchManagers.push(created);
+    this.closeBranchManagerModal();
+    const successMsg = this.t.admin.branchManagers.createdSuccess.replace(
+      '{branchName}',
+      branch.name,
+    );
+    alert(successMsg);
+  }
+
+  toggleBranchManagerStatus(bm: any) {
+    const reason = prompt(this.t.admin.branchManagers.confirmReasonPrompt);
+    if (reason && reason.trim()) {
+      bm.status = bm.status === 'active' ? 'suspended' : 'active';
+      alert(`تم تحديث حالة المسؤول ${bm.name} وتوثيق السبب في سجل التغييرات`);
     }
   }
 

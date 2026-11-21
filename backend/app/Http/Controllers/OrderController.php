@@ -24,6 +24,12 @@ class OrderController extends Controller
                 ->with(['customer', 'branch', 'items'])
                 ->latest()
                 ->get();
+        } elseif ($user->isBranchManager()) {
+            $branchId = $user->managedBranch()?->id;
+            $orders = Order::where('branch_id', $branchId)
+                ->with(['customer', 'store', 'branch', 'items'])
+                ->latest()
+                ->get();
         } else {
             $orders = Order::with(['customer', 'store', 'branch', 'items'])
                 ->latest()

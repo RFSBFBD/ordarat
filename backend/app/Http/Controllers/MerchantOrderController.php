@@ -28,13 +28,29 @@ class MerchantOrderController extends Controller
             $query->where('status', $request->query('status'));
         }
 
+        if ($request->has('branch_id') && $request->query('branch_id') !== 'all') {
+            $query->where('branch_id', $request->query('branch_id'));
+        }
+
         $newOrdersCount = $store->orders()->where('status', 'new')->count();
+
+        // Branches overview with individual status and new orders count
+        $branchesOverview = $store->branches()->get()->map(function ($b) {
+            return [
+                'id' => $b->id,
+                'name' => $b->name,
+                'is_active' => $b->is_active,
+                'is_accepting_orders' => $b->is_accepting_orders,
+                'new_orders_count' => $b->orders()->where('status', 'new')->count(),
+            ];
+        });
 
         return response()->json([
             'success' => true,
             'data' => [
                 'orders' => $query->latest()->get(),
                 'new_orders_count' => $newOrdersCount,
+                'branches_overview' => $branchesOverview,
                 'play_audio_alert' => $newOrdersCount > 0,
             ],
         ]);

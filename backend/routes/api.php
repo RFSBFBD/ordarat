@@ -1,11 +1,13 @@
 <?php
 
 use App\Http\Controllers\AdminAuditLogController;
+use App\Http\Controllers\AdminBranchManagerController;
 use App\Http\Controllers\AdminCustomerController;
 use App\Http\Controllers\AdminOrderController;
 use App\Http\Controllers\AdminSettingsController;
 use App\Http\Controllers\AdminStoreController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BranchDashboardController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\MerchantBranchController;
 use App\Http\Controllers\MerchantCategoryController;
@@ -57,6 +59,19 @@ Route::middleware('firebase.auth')->group(function () {
         Route::put('/settings', [AdminSettingsController::class, 'update']);
 
         Route::get('/audit-logs', [AdminAuditLogController::class, 'index']);
+
+        // Branch Managers Management (Admin Only)
+        Route::get('/branch-managers', [AdminBranchManagerController::class, 'index']);
+        Route::post('/branch-managers', [AdminBranchManagerController::class, 'store']);
+        Route::patch('/branch-managers/{user}/status', [AdminBranchManagerController::class, 'toggleStatus']);
+    });
+
+    // Branch Manager Endpoints (Branch Dashboard)
+    Route::prefix('branch')->group(function () {
+        Route::get('/dashboard', [BranchDashboardController::class, 'dashboard']);
+        Route::get('/orders', [BranchDashboardController::class, 'orders']);
+        Route::patch('/status', [BranchDashboardController::class, 'toggleStatus']);
+        Route::patch('/orders/{order}/status', [BranchDashboardController::class, 'updateOrderStatus']);
     });
 
     // Merchant / Store Owner Endpoints

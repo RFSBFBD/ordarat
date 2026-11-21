@@ -45,7 +45,9 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         <div class="location-box">
           <div class="loc-status" [class.success]="hasLocation">
             <span *ngIf="hasLocation">📍 {{ t.customer.checkout.locationShared }}</span>
-            <span *ngIf="!hasLocation">📍 شارك موقعك لحساب رسوم التوصيل وأقرب فرع</span>
+            <span *ngIf="!hasLocation"
+              >📍 شارك موقعك لحساب رسوم التوصيل وتوجيه الطلب لأقرب فرع</span
+            >
           </div>
 
           <button
@@ -61,6 +63,22 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
             <p>{{ locationError }}</p>
             <small>{{ t.customer.geolocation.deniedHelp }}</small>
           </div>
+        </div>
+
+        <!-- Closest Branch Notice -->
+        <div class="branch-notice-box" *ngIf="hasLocation && assignedBranch && !allBranchesClosed">
+          <span class="branch-icon">🏬</span>
+          <div>
+            <strong>{{
+              t.customer.checkout.closestBranchNotice.replace('{branchName}', assignedBranch.name)
+            }}</strong>
+            <p class="branch-sub">يتم تحديد أقرب فرع لموقعك داخل قنا تلقائياً لسرعة التوصيل</p>
+          </div>
+        </div>
+
+        <!-- All branches closed alert (Rule 5) -->
+        <div class="closed-store-alert" *ngIf="allBranchesClosed">
+          ⚠️ <strong>{{ t.customer.checkout.allBranchesClosedError }}</strong>
         </div>
 
         <div class="form-group">
@@ -94,7 +112,11 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         </div>
 
         <!-- Submit Button -->
-        <button class="btn btn-submit" [disabled]="isSubmitting" (click)="submitOrder()">
+        <button
+          class="btn btn-submit"
+          [disabled]="isSubmitting || allBranchesClosed"
+          (click)="submitOrder()"
+        >
           {{ isSubmitting ? t.customer.checkout.sendingOrder : t.customer.checkout.submitOrderBtn }}
         </button>
       </div>
@@ -235,6 +257,40 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         cursor: pointer;
         box-shadow: 0 4px 12px rgba(245, 179, 53, 0.3);
       }
+      .btn-submit:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+      .branch-notice-box {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        background: #f0fff4;
+        border: 1px solid #9ae6b4;
+        border-radius: 8px;
+        padding: 0.85rem 1rem;
+        margin-bottom: 1.25rem;
+        color: #22543d;
+      }
+      .branch-icon {
+        font-size: 1.5rem;
+      }
+      .branch-sub {
+        margin: 0.2rem 0 0;
+        font-size: 0.8rem;
+        color: #276749;
+      }
+      .closed-store-alert {
+        background: #fff5f5;
+        border: 1.5px solid #feb2b2;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1.25rem;
+        color: #c53030;
+        font-size: 0.95rem;
+        text-align: center;
+      }
     `,
   ],
 })
@@ -250,6 +306,8 @@ export class CheckoutComponent {
   isSubmitting = false;
   hasLocation = false;
   locationError = '';
+  assignedBranch: { id: number; name: string } | null = { id: 1, name: 'فرع وسط البلد' };
+  allBranchesClosed = false;
 
   itemsTotal = 120;
   deliveryFee = 15;
@@ -284,6 +342,9 @@ export class CheckoutComponent {
   }
 
   submitOrder() {
+    if (this.allBranchesClosed) {
+      return;
+    }
     this.showErrors = true;
     if (!this.name || !this.isEgyptianPhoneValid(this.phone) || !this.hasLocation) {
       return;
