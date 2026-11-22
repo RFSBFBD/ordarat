@@ -463,7 +463,11 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                   [class.btn-outline]="!isBlurActive()"
                   (click)="toggleBlur()"
                 >
-                  {{ isBlurActive() ? '🔲 إلغاء طمس البيانات' : '🛡️ تطبيق طمس الخصوصية (أرقام الهواتف)' }}
+                  {{
+                    isBlurActive()
+                      ? '🔲 إلغاء طمس البيانات'
+                      : '🛡️ تطبيق طمس الخصوصية (أرقام الهواتف)'
+                  }}
                 </button>
               </div>
               <div class="preview-frame" [class.blurred-overlay]="isBlurActive()">
@@ -480,7 +484,11 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                 [disabled]="!menuImagePreview() || isExtractingMenu()"
                 (click)="extractMenuFromImage()"
               >
-                {{ isExtractingMenu() ? '⏳ جاري استخراج وقراءة الأصناف...' : '✨ استخراج مسودة المنيو' }}
+                {{
+                  isExtractingMenu()
+                    ? '⏳ جاري استخراج وقراءة الأصناف...'
+                    : '✨ استخراج مسودة المنيو'
+                }}
               </button>
             </div>
 
@@ -489,7 +497,9 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
               <hr class="section-divider" />
               <div class="draft-header-row">
                 <h4>📋 {{ t.store.aiTools.draftTitle }}</h4>
-                <span class="hint-text">تظهر كمسودة فقط ولا تُضاف لمتجرك إلا بعد مراجعتك واعتمادك</span>
+                <span class="hint-text"
+                  >تظهر كمسودة فقط ولا تُضاف لمتجرك إلا بعد مراجعتك واعتمادك</span
+                >
               </div>
 
               <div class="draft-review-card" *ngFor="let draft of menuDrafts()">
@@ -511,8 +521,12 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                     </thead>
                     <tbody>
                       <tr *ngFor="let item of draft.items">
-                        <td><strong>{{ item.name }}</strong></td>
-                        <td><span class="category-tag">{{ item.category_name }}</span></td>
+                        <td>
+                          <strong>{{ item.name }}</strong>
+                        </td>
+                        <td>
+                          <span class="category-tag">{{ item.category_name }}</span>
+                        </td>
                         <td>
                           <input
                             type="number"
@@ -554,10 +568,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                 </div>
 
                 <div class="draft-actions-footer">
-                  <button
-                    class="btn btn-success"
-                    (click)="importAcceptedDraftItems(draft)"
-                  >
+                  <button class="btn btn-success" (click)="importAcceptedDraftItems(draft)">
                     🚀 {{ t.store.aiTools.importBtn }}
                   </button>
                 </div>
@@ -602,22 +613,31 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                 [disabled]="!imageGenProductName || isGeneratingImage()"
                 (click)="generateProductImage()"
               >
-                {{ isGeneratingImage() ? '⏳ جاري توليد الصورة التوضيحية...' : '✨ توليد صورة توضيحية' }}
+                {{
+                  isGeneratingImage()
+                    ? '⏳ جاري توليد الصورة التوضيحية...'
+                    : '✨ توليد صورة توضيحية'
+                }}
               </button>
             </div>
 
             <!-- Generated Image Preview -->
             <div class="generated-preview-card" *ngIf="generatedImage()">
               <div class="preview-badge-row">
-                <span class="badge badge-illustrative">🎨 {{ t.store.aiTools.illustrativeBadge }}</span>
+                <span class="badge badge-illustrative"
+                  >🎨 {{ t.store.aiTools.illustrativeBadge }}</span
+                >
                 <span class="dedup-hint">تم تحسين الاسم ومطابقته لمنع الازدواجية</span>
               </div>
               <div class="gen-img-container">
                 <img [src]="generatedImage()?.url" alt="صورة توضيحية للمنتج" class="gen-img" />
               </div>
-              <p class="gen-product-title"><strong>{{ generatedImage()?.name }}</strong></p>
+              <p class="gen-product-title">
+                <strong>{{ generatedImage()?.name }}</strong>
+              </p>
               <p class="gen-disclaimer">
-                هذه الصورة توضيحية من الذكاء الاصطناعي للمعاينة، ولن تظهر للعملاء إلا بعد اعتمادك البشري.
+                هذه الصورة توضيحية من الذكاء الاصطناعي للمعاينة، ولن تظهر للعملاء إلا بعد اعتمادك
+                البشري.
               </p>
               <div class="card-footer-actions">
                 <button
@@ -625,7 +645,11 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                   [disabled]="generatedImage()?.is_approved"
                   (click)="approveGeneratedImage()"
                 >
-                  {{ generatedImage()?.is_approved ? 'تم الاعتماد بنجاح ✅' : t.store.aiTools.approveImageBtn }}
+                  {{
+                    generatedImage()?.is_approved
+                      ? 'تم الاعتماد بنجاح ✅'
+                      : t.store.aiTools.approveImageBtn
+                  }}
                 </button>
               </div>
             </div>

@@ -64,11 +64,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         >
           📊 {{ t.admin.analytics.tabTitle }}
         </button>
-        <button
-          class="tab-btn"
-          [class.active]="activeTab() === 'ai'"
-          (click)="activeTab.set('ai')"
-        >
+        <button class="tab-btn" [class.active]="activeTab() === 'ai'" (click)="activeTab.set('ai')">
           🤖 {{ t.admin.ai.tabTitle }}
         </button>
       </div>
@@ -386,15 +382,41 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         <div class="section-title-row">
           <div>
             <h3>📊 {{ t.admin.analytics.title }}</h3>
-            <p class="subtitle">بيانات دقيقة مستخرجة مباشرة من استعلامات قاعدة البيانات بتوقيت قنا (Africa/Cairo)</p>
+            <p class="subtitle">
+              بيانات دقيقة مستخرجة مباشرة من استعلامات قاعدة البيانات بتوقيت قنا (Africa/Cairo)
+            </p>
           </div>
           <div class="period-filter-wrap">
             <label>{{ t.admin.analytics.periodLabel }}</label>
             <div class="filter-pills">
-              <button class="pill-btn" [class.active]="analyticsPeriod === 'today'" (click)="setAnalyticsPeriod('today')">{{ t.admin.analytics.periods.today }}</button>
-              <button class="pill-btn" [class.active]="analyticsPeriod === 'week'" (click)="setAnalyticsPeriod('week')">{{ t.admin.analytics.periods.week }}</button>
-              <button class="pill-btn" [class.active]="analyticsPeriod === 'month'" (click)="setAnalyticsPeriod('month')">{{ t.admin.analytics.periods.month }}</button>
-              <button class="pill-btn" [class.active]="analyticsPeriod === 'all'" (click)="setAnalyticsPeriod('all')">{{ t.admin.analytics.periods.all }}</button>
+              <button
+                class="pill-btn"
+                [class.active]="analyticsPeriod === 'today'"
+                (click)="setAnalyticsPeriod('today')"
+              >
+                {{ t.admin.analytics.periods.today }}
+              </button>
+              <button
+                class="pill-btn"
+                [class.active]="analyticsPeriod === 'week'"
+                (click)="setAnalyticsPeriod('week')"
+              >
+                {{ t.admin.analytics.periods.week }}
+              </button>
+              <button
+                class="pill-btn"
+                [class.active]="analyticsPeriod === 'month'"
+                (click)="setAnalyticsPeriod('month')"
+              >
+                {{ t.admin.analytics.periods.month }}
+              </button>
+              <button
+                class="pill-btn"
+                [class.active]="analyticsPeriod === 'all'"
+                (click)="setAnalyticsPeriod('all')"
+              >
+                {{ t.admin.analytics.periods.all }}
+              </button>
             </div>
           </div>
         </div>
@@ -404,8 +426,15 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
           <div class="cash-icon">💵</div>
           <div>
             <span class="cash-title">{{ t.admin.analytics.deliveredCashLabel }}</span>
-            <span class="cash-value">{{ analyticsData.cash_summary.delivered_cash_total_egp | number:'1.2-2' }} جنيه</span>
-            <small class="cash-note">⚠️ كاش محصل عند الاستلام بواسطة مندوبي المتاجر — لا تمثل أرباح المنصة</small>
+            <span class="cash-value"
+              >{{
+                analyticsData.cash_summary.delivered_cash_total_egp | number: '1.2-2'
+              }}
+              جنيه</span
+            >
+            <small class="cash-note"
+              >⚠️ كاش محصل عند الاستلام بواسطة مندوبي المتاجر — لا تمثل أرباح المنصة</small
+            >
           </div>
         </div>
 
@@ -437,13 +466,29 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         <!-- Orders by Status -->
         <h4 class="sub-heading">📦 {{ t.admin.analytics.ordersTitle }}</h4>
         <div class="status-summary-grid">
-          <div class="status-box new"><span>جديدة</span><strong>{{ analyticsData.orders.by_status.new }}</strong></div>
-          <div class="status-box accepted"><span>مقبولة</span><strong>{{ analyticsData.orders.by_status.accepted }}</strong></div>
-          <div class="status-box preparing"><span>جاري التحضير</span><strong>{{ analyticsData.orders.by_status.preparing }}</strong></div>
-          <div class="status-box out"><span>خرجت للتوصيل</span><strong>{{ analyticsData.orders.by_status.out_for_delivery }}</strong></div>
-          <div class="status-box delivered"><span>تم التسليم</span><strong>{{ analyticsData.orders.by_status.delivered }}</strong></div>
-          <div class="status-box rejected"><span>مرفوضة من المحل</span><strong>{{ analyticsData.orders.by_status.rejected }}</strong></div>
-          <div class="status-box cancelled"><span>ملغية</span><strong>{{ analyticsData.orders.by_status.cancelled }}</strong></div>
+          <div class="status-box new">
+            <span>جديدة</span><strong>{{ analyticsData.orders.by_status.new }}</strong>
+          </div>
+          <div class="status-box accepted">
+            <span>مقبولة</span><strong>{{ analyticsData.orders.by_status.accepted }}</strong>
+          </div>
+          <div class="status-box preparing">
+            <span>جاري التحضير</span><strong>{{ analyticsData.orders.by_status.preparing }}</strong>
+          </div>
+          <div class="status-box out">
+            <span>خرجت للتوصيل</span
+            ><strong>{{ analyticsData.orders.by_status.out_for_delivery }}</strong>
+          </div>
+          <div class="status-box delivered">
+            <span>تم التسليم</span><strong>{{ analyticsData.orders.by_status.delivered }}</strong>
+          </div>
+          <div class="status-box rejected">
+            <span>مرفوضة من المحل</span
+            ><strong>{{ analyticsData.orders.by_status.rejected }}</strong>
+          </div>
+          <div class="status-box cancelled">
+            <span>ملغية</span><strong>{{ analyticsData.orders.by_status.cancelled }}</strong>
+          </div>
         </div>
 
         <!-- Locations Breakdown & Privacy Policy -->
@@ -452,11 +497,20 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
             <h4 class="sub-heading">📍 {{ t.admin.analytics.zonesTitle }}</h4>
             <div class="table-responsive">
               <table class="data-table">
-                <thead><tr><th>المنطقة المجمعة في قنا</th><th>عدد الطلبات</th></tr></thead>
+                <thead>
+                  <tr>
+                    <th>المنطقة المجمعة في قنا</th>
+                    <th>عدد الطلبات</th>
+                  </tr>
+                </thead>
                 <tbody>
                   <tr *ngFor="let loc of analyticsData.locations_aggregated">
-                    <td><strong>{{ loc.zone }}</strong></td>
-                    <td><span class="count-tag">{{ loc.count }}</span></td>
+                    <td>
+                      <strong>{{ loc.zone }}</strong>
+                    </td>
+                    <td>
+                      <span class="count-tag">{{ loc.count }}</span>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -468,11 +522,18 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
             <h4 class="sub-heading">🏬 {{ t.admin.analytics.storesTitle }}</h4>
             <div class="table-responsive">
               <table class="data-table">
-                <thead><tr><th>اسم المتجر</th><th>الطلبات</th></tr></thead>
+                <thead>
+                  <tr>
+                    <th>اسم المتجر</th>
+                    <th>الطلبات</th>
+                  </tr>
+                </thead>
                 <tbody>
                   <tr *ngFor="let st of analyticsData.stores_activity">
                     <td>{{ st.store_name }}</td>
-                    <td><span class="count-tag">{{ st.orders_count }}</span></td>
+                    <td>
+                      <span class="count-tag">{{ st.orders_count }}</span>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -486,7 +547,9 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         <div class="section-title-row">
           <div>
             <h3>🤖 {{ t.admin.ai.title }}</h3>
-            <p class="subtitle">إدارة مفاتيح ومزودي الذكاء الاصطناعي، ضبط سقوف التكلفة، وإجراء التحليل الكلي</p>
+            <p class="subtitle">
+              إدارة مفاتيح ومزودي الذكاء الاصطناعي، ضبط سقوف التكلفة، وإجراء التحليل الكلي
+            </p>
           </div>
           <div class="ai-top-actions">
             <button class="btn btn-warning" (click)="openAiAnalyzePreviewModal()">
@@ -498,14 +561,19 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
               [class.btn-success]="aiKillSwitchActive"
               (click)="toggleKillSwitch()"
             >
-              {{ aiKillSwitchActive ? 'إلغاء الإيقاف الطارئ للـ AI' : '🚨 تفعيل الإيقاف الطارئ (Kill Switch)' }}
+              {{
+                aiKillSwitchActive
+                  ? 'إلغاء الإيقاف الطارئ للـ AI'
+                  : '🚨 تفعيل الإيقاف الطارئ (Kill Switch)'
+              }}
             </button>
           </div>
         </div>
 
         <!-- Emergency Kill Switch Alert if active -->
         <div class="alert-box-danger" *ngIf="aiKillSwitchActive">
-          🛑 <strong>تنبيه طوارئ:</strong> تم تفعيل الإيقاف الطارئ لخدمات الذكاء الاصطناعي. جميع طلبات التجار والنظام متوقفة ومحظورة فوراً.
+          🛑 <strong>تنبيه طوارئ:</strong> تم تفعيل الإيقاف الطارئ لخدمات الذكاء الاصطناعي. جميع
+          طلبات التجار والنظام متوقفة ومحظورة فوراً.
         </div>
 
         <!-- AI Function Settings Grid -->
@@ -522,22 +590,48 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
             </div>
             <div class="form-group">
               <label>{{ t.admin.ai.apiKeyLabel }}:</label>
-              <input type="password" [(ngModel)]="aiSettings.text_analysis.api_key_input" class="text-input" placeholder="أدخل المفتاح لتحديثه أو اتركه فارغاً" />
-              <small class="hint">الحالة: <strong [class.text-success]="aiSettings.text_analysis.is_configured">{{ aiSettings.text_analysis.is_configured ? t.admin.ai.configured + ' (' + aiSettings.text_analysis.masked_key + ')' : t.admin.ai.notConfigured }}</strong></small>
+              <input
+                type="password"
+                [(ngModel)]="aiSettings.text_analysis.api_key_input"
+                class="text-input"
+                placeholder="أدخل المفتاح لتحديثه أو اتركه فارغاً"
+              />
+              <small class="hint"
+                >الحالة:
+                <strong [class.text-success]="aiSettings.text_analysis.is_configured">{{
+                  aiSettings.text_analysis.is_configured
+                    ? t.admin.ai.configured + ' (' + aiSettings.text_analysis.masked_key + ')'
+                    : t.admin.ai.notConfigured
+                }}</strong></small
+              >
             </div>
             <div class="form-row">
               <div class="form-group col">
                 <label>{{ t.admin.ai.dailyLimitLabel }}:</label>
-                <input type="number" step="0.5" [(ngModel)]="aiSettings.text_analysis.cost_limit_daily_usd" class="text-input" />
+                <input
+                  type="number"
+                  step="0.5"
+                  [(ngModel)]="aiSettings.text_analysis.cost_limit_daily_usd"
+                  class="text-input"
+                />
               </div>
               <div class="form-group col">
                 <label>{{ t.admin.ai.monthlyLimitLabel }}:</label>
-                <input type="number" step="1" [(ngModel)]="aiSettings.text_analysis.cost_limit_monthly_usd" class="text-input" />
+                <input
+                  type="number"
+                  step="1"
+                  [(ngModel)]="aiSettings.text_analysis.cost_limit_monthly_usd"
+                  class="text-input"
+                />
               </div>
             </div>
             <div class="card-footer-actions">
-              <button class="btn btn-sm btn-outline" (click)="testAiConnection('text_analysis')">🔌 {{ t.admin.ai.testConnectionBtn }}</button>
-              <button class="btn btn-sm btn-primary" (click)="saveAiSettings('text_analysis')">💾 حفظ الإعدادات</button>
+              <button class="btn btn-sm btn-outline" (click)="testAiConnection('text_analysis')">
+                🔌 {{ t.admin.ai.testConnectionBtn }}
+              </button>
+              <button class="btn btn-sm btn-primary" (click)="saveAiSettings('text_analysis')">
+                💾 حفظ الإعدادات
+              </button>
             </div>
           </div>
 
@@ -553,22 +647,47 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
             </div>
             <div class="form-group">
               <label>{{ t.admin.ai.apiKeyLabel }}:</label>
-              <input type="password" [(ngModel)]="aiSettings.image_ocr_menu.api_key_input" class="text-input" placeholder="أدخل المفتاح لتحديثه أو اتركه فارغاً" />
-              <small class="hint">الحالة: <strong [class.text-success]="aiSettings.image_ocr_menu.is_configured">{{ aiSettings.image_ocr_menu.is_configured ? t.admin.ai.configured + ' (' + aiSettings.image_ocr_menu.masked_key + ')' : t.admin.ai.notConfigured }}</strong></small>
+              <input
+                type="password"
+                [(ngModel)]="aiSettings.image_ocr_menu.api_key_input"
+                class="text-input"
+                placeholder="أدخل المفتاح لتحديثه أو اتركه فارغاً"
+              />
+              <small class="hint"
+                >الحالة:
+                <strong [class.text-success]="aiSettings.image_ocr_menu.is_configured">{{
+                  aiSettings.image_ocr_menu.is_configured
+                    ? t.admin.ai.configured + ' (' + aiSettings.image_ocr_menu.masked_key + ')'
+                    : t.admin.ai.notConfigured
+                }}</strong></small
+              >
             </div>
             <div class="form-row">
               <div class="form-group col">
                 <label>{{ t.admin.ai.storeQuotaLabel }}:</label>
-                <input type="number" [(ngModel)]="aiSettings.image_ocr_menu.store_daily_quota" class="text-input" />
+                <input
+                  type="number"
+                  [(ngModel)]="aiSettings.image_ocr_menu.store_daily_quota"
+                  class="text-input"
+                />
               </div>
               <div class="form-group col">
                 <label>{{ t.admin.ai.dailyLimitLabel }}:</label>
-                <input type="number" step="0.5" [(ngModel)]="aiSettings.image_ocr_menu.cost_limit_daily_usd" class="text-input" />
+                <input
+                  type="number"
+                  step="0.5"
+                  [(ngModel)]="aiSettings.image_ocr_menu.cost_limit_daily_usd"
+                  class="text-input"
+                />
               </div>
             </div>
             <div class="card-footer-actions">
-              <button class="btn btn-sm btn-outline" (click)="testAiConnection('image_ocr_menu')">🔌 {{ t.admin.ai.testConnectionBtn }}</button>
-              <button class="btn btn-sm btn-primary" (click)="saveAiSettings('image_ocr_menu')">💾 حفظ الإعدادات</button>
+              <button class="btn btn-sm btn-outline" (click)="testAiConnection('image_ocr_menu')">
+                🔌 {{ t.admin.ai.testConnectionBtn }}
+              </button>
+              <button class="btn btn-sm btn-primary" (click)="saveAiSettings('image_ocr_menu')">
+                💾 حفظ الإعدادات
+              </button>
             </div>
           </div>
 
@@ -583,37 +702,76 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
             </div>
             <div class="form-group">
               <label>{{ t.admin.ai.apiKeyLabel }}:</label>
-              <input type="password" [(ngModel)]="aiSettings.image_generation.api_key_input" class="text-input" placeholder="أدخل المفتاح أو اتركه للمزود المحلي" />
-              <small class="hint">الحالة: <strong [class.text-success]="aiSettings.image_generation.is_configured">{{ aiSettings.image_generation.is_configured ? t.admin.ai.configured : t.admin.ai.notConfigured }}</strong></small>
+              <input
+                type="password"
+                [(ngModel)]="aiSettings.image_generation.api_key_input"
+                class="text-input"
+                placeholder="أدخل المفتاح أو اتركه للمزود المحلي"
+              />
+              <small class="hint"
+                >الحالة:
+                <strong [class.text-success]="aiSettings.image_generation.is_configured">{{
+                  aiSettings.image_generation.is_configured
+                    ? t.admin.ai.configured
+                    : t.admin.ai.notConfigured
+                }}</strong></small
+              >
             </div>
             <div class="form-row">
               <div class="form-group col">
                 <label>{{ t.admin.ai.storeQuotaLabel }}:</label>
-                <input type="number" [(ngModel)]="aiSettings.image_generation.store_daily_quota" class="text-input" />
+                <input
+                  type="number"
+                  [(ngModel)]="aiSettings.image_generation.store_daily_quota"
+                  class="text-input"
+                />
               </div>
               <div class="form-group col">
                 <label>{{ t.admin.ai.dailyLimitLabel }}:</label>
-                <input type="number" step="0.5" [(ngModel)]="aiSettings.image_generation.cost_limit_daily_usd" class="text-input" />
+                <input
+                  type="number"
+                  step="0.5"
+                  [(ngModel)]="aiSettings.image_generation.cost_limit_daily_usd"
+                  class="text-input"
+                />
               </div>
             </div>
             <div class="card-footer-actions">
-              <button class="btn btn-sm btn-outline" (click)="testAiConnection('image_generation')">🔌 {{ t.admin.ai.testConnectionBtn }}</button>
-              <button class="btn btn-sm btn-primary" (click)="saveAiSettings('image_generation')">💾 حفظ الإعدادات</button>
+              <button class="btn btn-sm btn-outline" (click)="testAiConnection('image_generation')">
+                🔌 {{ t.admin.ai.testConnectionBtn }}
+              </button>
+              <button class="btn btn-sm btn-primary" (click)="saveAiSettings('image_generation')">
+                💾 حفظ الإعدادات
+              </button>
             </div>
           </div>
         </div>
 
         <!-- Store AI Quota & Freeze Controls -->
-        <h4 class="sub-heading" style="margin-top: 2rem;">🏬 التحكم في تفعيل وتجميد الـ AI للمتاجر</h4>
+        <h4 class="sub-heading" style="margin-top: 2rem;">
+          🏬 التحكم في تفعيل وتجميد الـ AI للمتاجر
+        </h4>
         <div class="table-responsive">
           <table class="data-table">
-            <thead><tr><th>المتجر</th><th>الحالة للـ AI</th><th>الإجراء الإداري</th></tr></thead>
+            <thead>
+              <tr>
+                <th>المتجر</th>
+                <th>الحالة للـ AI</th>
+                <th>الإجراء الإداري</th>
+              </tr>
+            </thead>
             <tbody>
               <tr *ngFor="let st of aiStores">
-                <td><strong>{{ st.name }}</strong></td>
+                <td>
+                  <strong>{{ st.name }}</strong>
+                </td>
                 <td>
                   <span class="status-tag" [class.active]="!st.is_frozen">
-                    {{ st.is_frozen ? 'مجمد مؤقتاً (' + (st.freeze_reason || 'إيقاف إداري') + ')' : 'مفعل لاستخدام الـ AI' }}
+                    {{
+                      st.is_frozen
+                        ? 'مجمد مؤقتاً (' + (st.freeze_reason || 'إيقاف إداري') + ')'
+                        : 'مفعل لاستخدام الـ AI'
+                    }}
                   </span>
                 </td>
                 <td>
@@ -632,18 +790,34 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         </div>
 
         <!-- Usage Logs Table -->
-        <h4 class="sub-heading" style="margin-top: 2rem;">📜 {{ t.admin.ai.usageLogsTitle }} (بدون بيانات شخصية)</h4>
+        <h4 class="sub-heading" style="margin-top: 2rem;">
+          📜 {{ t.admin.ai.usageLogsTitle }} (بدون بيانات شخصية)
+        </h4>
         <div class="table-responsive">
           <table class="data-table">
-            <thead><tr><th>الوظيفة</th><th>المزود</th><th>المتجر</th><th>المخرجات</th><th>التكلفة التقديرية</th><th>الحالة</th><th>الوقت</th></tr></thead>
+            <thead>
+              <tr>
+                <th>الوظيفة</th>
+                <th>المزود</th>
+                <th>المتجر</th>
+                <th>المخرجات</th>
+                <th>التكلفة التقديرية</th>
+                <th>الحالة</th>
+                <th>الوقت</th>
+              </tr>
+            </thead>
             <tbody>
               <tr *ngFor="let log of aiUsageLogs">
                 <td>{{ log.function_type }}</td>
                 <td>{{ log.provider_name }}</td>
                 <td>{{ log.store_name || 'إدارة المنصة' }}</td>
                 <td>{{ log.output_size }}</td>
-                <td>\${{ log.estimated_cost_usd | number:'1.4-4' }}</td>
-                <td><span class="status-tag" [class.active]="log.status === 'success'">{{ log.status }}</span></td>
+                <td>\${{ log.estimated_cost_usd | number: '1.4-4' }}</td>
+                <td>
+                  <span class="status-tag" [class.active]="log.status === 'success'">{{
+                    log.status
+                  }}</span>
+                </td>
                 <td>{{ log.created_at }}</td>
               </tr>
             </tbody>
@@ -767,12 +941,20 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
           </div>
 
           <div class="disclaimer-banner">
-            ⚠️ <strong>إقرار وتنبيه:</strong> سيتم إرسال الأرقام الإحصائية المجمعة فقط إلى المزود (بدون أي محادثات أو بيانات شخصية)، وستظهر المخرجات كـ <em>«{{ t.admin.ai.analyzeDisclaimer }}»</em>.
+            ⚠️ <strong>إقرار وتنبيه:</strong> سيتم إرسال الأرقام الإحصائية المجمعة فقط إلى المزود
+            (بدون أي محادثات أو بيانات شخصية)، وستظهر المخرجات كـ
+            <em>«{{ t.admin.ai.analyzeDisclaimer }}»</em>.
           </div>
 
           <div class="modal-actions">
-            <button class="btn btn-outline" (click)="showAiAnalyzePreviewModal.set(false)">إلغاء</button>
-            <button class="btn btn-warning" [disabled]="isAnalyzingAi" (click)="confirmAndRunAiAnalysis()">
+            <button class="btn btn-outline" (click)="showAiAnalyzePreviewModal.set(false)">
+              إلغاء
+            </button>
+            <button
+              class="btn btn-warning"
+              [disabled]="isAnalyzingAi"
+              (click)="confirmAndRunAiAnalysis()"
+            >
               {{ isAnalyzingAi ? 'جاري التحليل واستدعاء المزود...' : 'تأكيد وإجراء التحليل' }}
             </button>
           </div>
@@ -799,7 +981,9 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
           </div>
 
           <div class="modal-actions">
-            <button class="btn btn-primary" (click)="showAiAnalyzeResultModal.set(false)">تم الاطلاع وإغلاق</button>
+            <button class="btn btn-primary" (click)="showAiAnalyzeResultModal.set(false)">
+              تم الاطلاع وإغلاق
+            </button>
           </div>
         </div>
       </div>
@@ -1307,7 +1491,9 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
 export class AdminDashboardComponent {
   protected readonly t = AR_TRANSLATIONS;
 
-  activeTab = signal<'stores' | 'orders' | 'customers' | 'branch_managers' | 'settings' | 'analytics' | 'ai'>('stores');
+  activeTab = signal<
+    'stores' | 'orders' | 'customers' | 'branch_managers' | 'settings' | 'analytics' | 'ai'
+  >('stores');
   showNewStoreModal = signal<boolean>(false);
   showNewBranchManagerModal = signal<boolean>(false);
   showAiAnalyzePreviewModal = signal<boolean>(false);
@@ -1399,9 +1585,33 @@ export class AdminDashboardComponent {
   ];
 
   aiUsageLogs = [
-    { function_type: 'image_ocr_menu', provider_name: 'mock', store_name: 'مطعم الكرنك', output_size: 14, estimated_cost_usd: 0.015, status: 'success', created_at: 'اليوم 16:30' },
-    { function_type: 'image_generation', provider_name: 'mock', store_name: 'بقالة الأمانة', output_size: 1, estimated_cost_usd: 0.02, status: 'success', created_at: 'اليوم 15:10' },
-    { function_type: 'text_analysis', provider_name: 'mock', store_name: null, output_size: 120, estimated_cost_usd: 0.005, status: 'success', created_at: 'اليوم 12:00' },
+    {
+      function_type: 'image_ocr_menu',
+      provider_name: 'mock',
+      store_name: 'مطعم الكرنك',
+      output_size: 14,
+      estimated_cost_usd: 0.015,
+      status: 'success',
+      created_at: 'اليوم 16:30',
+    },
+    {
+      function_type: 'image_generation',
+      provider_name: 'mock',
+      store_name: 'بقالة الأمانة',
+      output_size: 1,
+      estimated_cost_usd: 0.02,
+      status: 'success',
+      created_at: 'اليوم 15:10',
+    },
+    {
+      function_type: 'text_analysis',
+      provider_name: 'mock',
+      store_name: null,
+      output_size: 120,
+      estimated_cost_usd: 0.005,
+      status: 'success',
+      created_at: 'اليوم 12:00',
+    },
   ];
 
   newManager = {
@@ -1723,7 +1933,7 @@ export class AdminDashboardComponent {
         stores_count: this.analyticsData.stores_activity.length,
       },
       null,
-      2
+      2,
     );
   }
 
