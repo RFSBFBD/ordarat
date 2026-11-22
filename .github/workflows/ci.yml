@@ -55,7 +55,7 @@ jobs:
       - name: Install Frontend Dependencies
         run: |
           cd frontend
-          npm ci || npm install
+          npm ci
 
       - name: Check Code Formatting
         run: |
