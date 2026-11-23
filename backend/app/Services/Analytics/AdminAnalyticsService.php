@@ -134,10 +134,28 @@ class AdminAnalyticsService
             ->where('created_at', '<=', Carbon::now('Africa/Cairo')->subMinutes(10))
             ->count();
 
+        // 7. Merchant Applications Metrics
+        $totalMerchantApplications = \App\Models\MerchantApplication::count();
+        $pendingMerchantApplications = \App\Models\MerchantApplication::where('status', 'pending')->count();
+        $activeBusinessesCount = Store::where('is_active', true)->count();
+
         return [
             'period' => $period,
             'timezone' => 'Africa/Cairo',
             'generated_at' => $now->toIso8601String(),
+            'events_summary' => [
+                'accounts_registered' => $totalRegisteredCustomers,
+                'orders_placed' => $totalOrdersInPeriod,
+                'orders_delivered' => (int) ($formattedStatuses['delivered'] ?? 0),
+                'businesses_activated' => $activeBusinessesCount,
+                'merchant_applications_pending' => $pendingMerchantApplications,
+                'merchant_applications_total' => $totalMerchantApplications,
+                'visitors_telemetry' => [
+                    'count' => null,
+                    'status' => 'pending_client_instrumentation',
+                    'note' => 'مؤشر الزوار يحتاج تفعيل عداد المتصفح؛ لا يتم عرض أي أرقام وهمية أو افتراضية',
+                ],
+            ],
             'definitions' => [
                 'customers_registered' => 'إجمالي المستخدمين المسجلين كعملاء بالمنصة',
                 'customers_active' => 'العملاء الذين قاموا بإرسال طلب واحد على الأقل خلال الفترة المحددة',

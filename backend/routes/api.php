@@ -38,7 +38,10 @@ Route::get('/stores', [StoreController::class, 'index']);
 Route::get('/stores/{store}', [StoreController::class, 'show']);
 Route::post('/checkout/quote', [CheckoutController::class, 'quote']);
 
-// Protected Endpoints (Firebase ID Token verification)
+// Firebase Token to App Session Exchange
+Route::post('/auth/session', [AuthController::class, 'session']);
+
+// Protected Endpoints (Firebase ID Token or App Session Token)
 Route::middleware('firebase.auth')->group(function () {
     // Auth & Profile
     Route::get('/auth/me', [AuthController::class, 'me']);

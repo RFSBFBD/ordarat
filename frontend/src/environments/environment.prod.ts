@@ -5,10 +5,10 @@ export const environment = {
   // Replace the placeholder values with your real Firebase web app config
   // (see docs/FIREBASE_SETUP.md). Never put service-account secrets here.
   firebase: {
-    projectId: 'ordarat-qena',
-    apiKey: 'FIREBASE_WEB_API_KEY_PLACEHOLDER',
-    authDomain: 'ordarat-qena.firebaseapp.com',
-    appId: 'FIREBASE_WEB_APP_ID_PLACEHOLDER',
+    projectId: 'planning-with-ai-d25ac',
+    apiKey: 'AIzaSyCcdsLvfk0XwXtZIfuJ8KsjtIBOy-sBlN0',
+    authDomain: 'planning-with-ai-d25ac.firebaseapp.com',
+    appId: '1:775088921115:web:3dc618f2b7e33de0ea76be',
   },
   city: 'قنا',
 };

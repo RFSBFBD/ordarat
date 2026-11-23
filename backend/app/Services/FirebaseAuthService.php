@@ -53,10 +53,17 @@ class FirebaseAuthService
         $kid = $header['kid'];
         $alg = $header['alg'];
 
-        // 2. Fetch Google Public Certificates (cached for 1 hour)
+        if ($alg !== 'RS256') {
+            throw new Exception('Invalid algorithm. Expected RS256, got: '.$alg);
+        }
+
+        // 2. Fetch Google Public Certificates (with automatic rotation refresh if kid not found)
         $publicKeys = $this->getGooglePublicKeys();
         if (! isset($publicKeys[$kid])) {
-            throw new Exception('Unknown or expired public key ID');
+            $publicKeys = $this->getGooglePublicKeys(true);
+            if (! isset($publicKeys[$kid])) {
+                throw new Exception('Unknown or expired public key ID');
+            }
         }
 
         $publicKey = $publicKeys[$kid];
@@ -83,16 +90,40 @@ class FirebaseAuthService
             throw new Exception('Token has expired');
         }
 
+        if (isset($claims['nbf']) && $claims['nbf'] > time()) {
+            throw new Exception('Token is not yet valid (nbf)');
+        }
+
+        if (isset($claims['iat']) && $claims['iat'] > (time() + 300)) {
+            throw new Exception('Token issued in the future (iat)');
+        }
+
+        // 5. Strict Google Sign-in provider check
+        $firebaseClaims = (array) ($claims['firebase'] ?? []);
+        $signInProvider = $firebaseClaims['sign_in_provider'] ?? '';
+        if ($signInProvider !== 'google.com') {
+            throw new Exception("Invalid sign_in_provider: {$signInProvider}. Only google.com is allowed");
+        }
+
+        // 6. Strict email verification check
+        if (($claims['email_verified'] ?? false) !== true) {
+            throw new Exception('Google email is not verified (email_verified must be true)');
+        }
+
         return $claims;
     }
 
     /**
      * Retrieve Google public certificates.
      */
-    protected function getGooglePublicKeys(): array
+    public function getGooglePublicKeys(bool $forceRefresh = false): array
     {
         if ($this->mockPublicKeys !== null) {
             return $this->mockPublicKeys;
+        }
+
+        if ($forceRefresh) {
+            Cache::forget('firebase_google_public_keys');
         }
 
         return Cache::remember('firebase_google_public_keys', 3600, function () {

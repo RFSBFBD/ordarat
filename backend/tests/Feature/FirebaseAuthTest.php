@@ -95,6 +95,7 @@ KEY;
         parent::setUp();
 
         $service = new FirebaseAuthService;
+        $this->projectId = $service->getProjectId();
         $service->setMockPublicKeys([
             $this->kid => self::TEST_PUBLIC_KEY,
         ]);
@@ -108,9 +109,13 @@ KEY;
             'aud' => $this->projectId,
             'sub' => 'firebase_uid_test_123',
             'email' => 'customer_qena@example.com',
+            'email_verified' => true,
             'name' => 'أحمد قناوي',
             'iat' => time() - 10,
             'exp' => time() + 3600,
+            'firebase' => [
+                'sign_in_provider' => 'google.com',
+            ],
         ], $overrides);
 
         return JWT::encode($payload, $signingKey ?: self::TEST_PRIVATE_KEY, 'RS256', $this->kid);
@@ -239,6 +244,7 @@ KEY;
     {
         $existing = User::factory()->create([
             'email' => 'manager@ordarat.test',
+            'firebase_uid' => null,
             'role' => 'branch_manager',
             'status' => 'active',
         ]);
@@ -276,9 +282,9 @@ KEY;
         $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/auth/me');
 
-        // Refused instead of linking into the admin account
+        // Refused with 401 INVALID_TOKEN because email_verified must be true
         $response->assertStatus(401)
-            ->assertJsonPath('error.code', 'EMAIL_NOT_VERIFIED');
+            ->assertJsonPath('error.code', 'INVALID_TOKEN');
     }
 
     public function test_admin_emails_env_bootstraps_admin_role_with_verified_email(): void
@@ -311,8 +317,9 @@ KEY;
         $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/auth/me');
 
-        $response->assertStatus(200)
-            ->assertJsonPath('data.role', 'customer');
+        // Rejected as unverified
+        $response->assertStatus(401)
+            ->assertJsonPath('error.code', 'INVALID_TOKEN');
     }
 
     public function test_frontend_supplied_role_is_never_accepted(): void
@@ -332,5 +339,107 @@ KEY;
 
         $response->assertStatus(200);
         $this->assertSame('customer', User::where('firebase_uid', 'firebase_uid_role_spoof')->first()->role);
+    }
+
+    public function test_non_google_provider_token_is_rejected(): void
+    {
+        $token = $this->generateTestToken([
+            'firebase' => [
+                'sign_in_provider' => 'password',
+            ],
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/auth/me');
+
+        $response->assertStatus(401)
+            ->assertJsonPath('error.code', 'INVALID_TOKEN');
+    }
+
+    public function test_token_with_future_iat_is_rejected(): void
+    {
+        $token = $this->generateTestToken([
+            'iat' => time() + 600, // 10 minutes in the future
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/auth/me');
+
+        $response->assertStatus(401)
+            ->assertJsonPath('error.code', 'INVALID_TOKEN');
+    }
+
+    public function test_app_session_creation_and_logout_invalidation(): void
+    {
+        $firebaseToken = $this->generateTestToken([
+            'sub' => 'session_test_uid',
+            'email' => 'session@ordarat.test',
+        ]);
+
+        // 1. Exchange Firebase Token for App Session Token
+        $loginRes = $this->postJson('/api/auth/session', [
+            'firebase_token' => $firebaseToken,
+        ]);
+
+        $loginRes->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonStructure(['token', 'data' => ['id', 'name', 'role']]);
+
+        $appToken = $loginRes->json('token');
+        $this->assertStringStartsWith('ordarat_sess_', $appToken);
+
+        // 2. Call API with the App Session Token
+        $meRes = $this->withHeader('Authorization', 'Bearer '.$appToken)
+            ->getJson('/api/auth/me');
+        $meRes->assertStatus(200)
+            ->assertJsonPath('data.email', 'session@ordarat.test');
+
+        // 3. Logout and invalidate session
+        $logoutRes = $this->withHeader('Authorization', 'Bearer '.$appToken)
+            ->postJson('/api/auth/logout');
+        $logoutRes->assertStatus(200)
+            ->assertJsonPath('success', true);
+
+        // 4. Calling API with invalidated token must be rejected with 401
+        $rejectedRes = $this->withHeader('Authorization', 'Bearer '.$appToken)
+            ->getJson('/api/auth/me');
+        $rejectedRes->assertStatus(401)
+            ->assertJsonPath('error.code', 'UNAUTHENTICATED');
+    }
+
+    public function test_same_firebase_uid_returns_same_account_without_duplication(): void
+    {
+        $token1 = $this->generateTestToken([
+            'sub' => 'persistent_uid_999',
+            'email' => 'persistent@ordarat.test',
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token1)->getJson('/api/auth/me')->assertStatus(200);
+        $countAfterFirst = User::where('firebase_uid', 'persistent_uid_999')->count();
+        $this->assertSame(1, $countAfterFirst);
+
+        // Second login with same UID
+        $token2 = $this->generateTestToken([
+            'sub' => 'persistent_uid_999',
+            'email' => 'persistent@ordarat.test',
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token2)->getJson('/api/auth/me')->assertStatus(200);
+        $countAfterSecond = User::where('firebase_uid', 'persistent_uid_999')->count();
+        $this->assertSame(1, $countAfterSecond);
+    }
+
+    public function test_non_admin_cannot_access_analytics_endpoint(): void
+    {
+        $customerToken = $this->generateTestToken([
+            'sub' => 'customer_for_analytics_check',
+            'email' => 'cust@ordarat.test',
+        ]);
+
+        // Customer attempts to access admin analytics
+        $response = $this->withHeader('Authorization', 'Bearer '.$customerToken)
+            ->getJson('/api/admin/analytics');
+
+        $response->assertStatus(403);
     }
 }

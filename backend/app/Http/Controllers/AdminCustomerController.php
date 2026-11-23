@@ -18,7 +18,9 @@ class AdminCustomerController extends Controller
             ], 403);
         }
 
-        $query = User::where('role', 'customer');
+        $query = User::where('role', 'customer')
+            ->withCount('orders')
+            ->select(['id', 'name', 'email', 'phone', 'role', 'status', 'created_at', 'profile_completed_at']);
 
         if ($request->has('status')) {
             $query->where('status', $request->query('status'));
