@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from './core/services/auth.service';
 import { IconComponent } from './shared/components/icon/icon.component';
+import { LoadingComponent } from './shared/components/loading/loading.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, IconComponent],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, IconComponent, LoadingComponent],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })

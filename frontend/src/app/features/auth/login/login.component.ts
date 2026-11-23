@@ -15,6 +15,22 @@ import { AuthService } from '../../../core/services/auth.service';
   template: `
     <div class="login-wrapper">
       <div class="login-box">
+        <div class="login-logo-header" style="display: flex; justify-content: center; margin-bottom: 1.25rem;">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 128 128"
+            width="80"
+            height="80"
+            style="filter: drop-shadow(0 4px 12px rgba(14, 90, 107, 0.2));"
+          >
+            <rect width="128" height="128" rx="32" fill="#0E5A6B" />
+            <path d="M 64 114 L 35.6 70.6 A 34 34 0 1 1 92.4 70.6 Z" fill="#F5B335" />
+            <circle cx="64" cy="44" r="3.5" fill="#FFFFFF" />
+            <path d="M 50 60 A 14 14 0 0 1 78 60 Z" fill="#FFFFFF" />
+            <rect x="47" y="62" width="34" height="4" rx="2" fill="#FFFFFF" />
+          </svg>
+        </div>
+
         <div *ngIf="deniedMessage" class="error-box">
           {{ deniedMessage }}
         </div>

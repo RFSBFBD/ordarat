@@ -26,11 +26,35 @@
   display: block;
 }
 
+.brand-header-group {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.header-logo-icon {
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.2));
+}
+
+.brand-text-block {
+  display: flex;
+  flex-direction: column;
+}
+
 .brand-title {
   font-family: var(--font-heading);
   font-size: 1.85rem;
   margin: 0;
   line-height: 1.1;
+  font-weight: 800;
+}
+
+.brand-gold {
+  color: var(--color-accent);
+}
+
+.brand-white {
   color: #ffffff;
 }
 

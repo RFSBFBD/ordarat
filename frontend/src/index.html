@@ -2,10 +2,14 @@
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="utf-8" />
-    <title>أوردرات - طلبات قنا لحد بابك</title>
+    <title>أوردرات — طلبات قنا لحد بابك</title>
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/svg+xml" href="/brand/logo-icon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/brand/favicon-16x16.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -14,6 +18,101 @@
     />
   </head>
   <body class="bg-[#F6EEDC] text-[#1E2A2F] font-sans antialiased m-0 p-0">
-    <app-root></app-root>
+    <app-root>
+      <!-- Initial Loading Screen on Refresh / First Load -->
+      <style>
+        .initial-splash-wrapper {
+          position: fixed;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background-color: #f6eedc;
+          z-index: 999999;
+          font-family: 'Tajawal', sans-serif;
+        }
+        .initial-splash-card {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          padding: 2.25rem;
+          background: rgba(255, 255, 255, 0.95);
+          border: 1px solid rgba(226, 217, 197, 0.8);
+          border-radius: 24px;
+          box-shadow: 0 12px 36px rgba(14, 90, 107, 0.12);
+          max-width: 90vw;
+          width: 320px;
+        }
+        .initial-splash-logo {
+          animation: initialPulse 1.6s ease-in-out infinite;
+          filter: drop-shadow(0 6px 16px rgba(14, 90, 107, 0.25));
+          margin-bottom: 1rem;
+        }
+        .initial-splash-title {
+          font-size: 2.1rem;
+          font-weight: 800;
+          margin: 0;
+          line-height: 1.1;
+        }
+        .initial-splash-slogan {
+          font-family: 'IBM Plex Sans Arabic', sans-serif;
+          font-size: 0.95rem;
+          color: #5c6e76;
+          margin: 0.35rem 0 1.25rem 0;
+        }
+        .initial-splash-track {
+          width: 100%;
+          height: 6px;
+          background-color: #f6eedc;
+          border-radius: 999px;
+          overflow: hidden;
+          position: relative;
+        }
+        .initial-splash-bar {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          left: 0;
+          width: 45%;
+          background: linear-gradient(90deg, #0e5a6b, #f5b335);
+          border-radius: 999px;
+          animation: initialSlide 1.2s ease-in-out infinite alternate;
+        }
+        @keyframes initialPulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.08); }
+        }
+        @keyframes initialSlide {
+          0% { left: -10%; width: 30%; }
+          50% { width: 55%; }
+          100% { left: 80%; width: 30%; }
+        }
+      </style>
+      <div class="initial-splash-wrapper">
+        <div class="initial-splash-card">
+          <svg
+            class="initial-splash-logo"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 128 128"
+            width="92"
+            height="92"
+          >
+            <rect width="128" height="128" rx="32" fill="#0E5A6B" />
+            <path d="M 64 114 L 35.6 70.6 A 34 34 0 1 1 92.4 70.6 Z" fill="#F5B335" />
+            <circle cx="64" cy="44" r="3.5" fill="#FFFFFF" />
+            <path d="M 50 60 A 14 14 0 0 1 78 60 Z" fill="#FFFFFF" />
+            <rect x="47" y="62" width="34" height="4" rx="2" fill="#FFFFFF" />
+          </svg>
+          <h2 class="initial-splash-title">
+            <span style="color: #F5B335;">أور</span><span style="color: #0E5A6B;">درات</span>
+          </h2>
+          <p class="initial-splash-slogan">طلبات قنا لحد بابك</p>
+          <div class="initial-splash-track">
+            <div class="initial-splash-bar"></div>
+          </div>
+        </div>
+      </div>
+    </app-root>
   </body>
 </html>
