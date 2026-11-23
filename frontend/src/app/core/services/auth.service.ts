@@ -1,19 +1,12 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { FirebaseApp, initializeApp } from 'firebase/app';
-import {
-  Auth,
-  GoogleAuthProvider,
-  User as FirebaseUser,
-  getAuth,
-  onIdTokenChanged,
-  signInWithPopup,
-  signOut,
-} from 'firebase/auth';
+import type { FirebaseApp } from 'firebase/app';
+import type { Auth, User as FirebaseUser } from 'firebase/auth';
 import { environment } from '../../../environments/environment';
 
 export type UserRole = 'customer' | 'merchant' | 'branch_manager' | 'admin';
+export type OnboardingState = 'new' | 'customer' | 'merchant_applied' | 'merchant_approved' | 'merchant_rejected';
 
 export interface OrdaratUser {
   id: number;
@@ -22,6 +15,9 @@ export interface OrdaratUser {
   phone: string | null;
   role: UserRole;
   status: string;
+  profile_complete?: boolean;
+  onboarding_state?: OnboardingState;
+  merchant_application_status?: 'pending' | 'approved' | 'rejected' | null;
 }
 
 interface MeResponse {
@@ -30,9 +26,10 @@ interface MeResponse {
 }
 
 /**
- * Firebase Google authentication for customers, plus the server-side
- * profile (role) resolved from the Laravel API. Roles are NEVER decided
- * in the browser: the API assigns them from the database.
+ * ONE Google sign-in for everyone. The browser never picks a role: the API
+ * assigns it from the database (admin list, approved merchant application,
+ * or branch-manager record linked by the verified Google email).
+ * Firebase is imported lazily so the main bundle stays light.
  */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -49,11 +46,6 @@ export class AuthService {
   /** Firebase user once the popup sign-in succeeds (or a session is restored). */
   readonly firebaseUser = signal<FirebaseUser | null>(null);
 
-  /** Internal credentials token (for merchants, branch managers, and admins). */
-  readonly credentialsToken = signal<string | null>(
-    typeof window !== 'undefined' ? localStorage.getItem('ordarat.auth_token') : null,
-  );
-
   /** Server-side profile including the authoritative role. */
   readonly profile = signal<OrdaratUser | null>(null);
 
@@ -66,7 +58,7 @@ export class AuthService {
   /** True when signed in but the API could not confirm the profile yet. */
   readonly profileError = signal<string | null>(null);
 
-  readonly isLoggedIn = computed(() => this.firebaseUser() !== null || this.credentialsToken() !== null);
+  readonly isLoggedIn = computed(() => this.firebaseUser() !== null);
   readonly role = computed<UserRole | null>(() => this.profile()?.role ?? null);
 
   constructor() {
@@ -75,7 +67,7 @@ export class AuthService {
       this.readyResolve = resolve;
     });
 
-    // Restore cached profile for credentials login if present
+    // Restore cached profile while the fresh one loads
     const savedUser = typeof window !== 'undefined' ? localStorage.getItem('ordarat.auth_user') : null;
     if (savedUser) {
       try {
@@ -88,17 +80,8 @@ export class AuthService {
       // dashboard screens can be verified visually without real Firebase.
       this.isConfigured = false;
       this.initE2EStub();
-    } else if (this.credentialsToken()) {
-      // Credentials user already logged in (merchant / branch manager / admin)
-      this.refreshProfile().finally(() => {
-        this.authReady.set(true);
-        this.readyResolve();
-      });
-      if (this.isConfigured) {
-        this.initFirebase();
-      }
     } else if (this.isConfigured) {
-      this.initFirebase();
+      void this.initFirebase();
     } else {
       this.authReady.set(true);
       this.readyResolve();
@@ -112,6 +95,20 @@ export class AuthService {
     )
       ? (stored as UserRole)
       : 'customer';
+    const storedState = localStorage.getItem('e2e.stubOnboarding');
+    const onboardingState: OnboardingState = [
+      'new',
+      'customer',
+      'merchant_applied',
+      'merchant_approved',
+      'merchant_rejected',
+    ].includes(storedState ?? '')
+      ? (storedState as OnboardingState)
+      : 'customer';
+    const storedMerchantStatus = localStorage.getItem('e2e.stubMerchantStatus');
+    const merchantStatus = ['pending', 'approved', 'rejected'].includes(storedMerchantStatus ?? '')
+      ? (storedMerchantStatus as 'pending' | 'approved' | 'rejected')
+      : null;
     this.firebaseUser.set({ uid: 'e2e-stub' } as unknown as FirebaseUser);
     this.profile.set({
       id: 0,
@@ -120,6 +117,9 @@ export class AuthService {
       phone: null,
       role,
       status: 'active',
+      profile_complete: onboardingState !== 'new',
+      onboarding_state: onboardingState,
+      merchant_application_status: merchantStatus,
     });
     this.authReady.set(true);
     this.readyResolve();
@@ -136,7 +136,11 @@ export class AuthService {
     return !isPlaceholder(apiKey) && !isPlaceholder(appId) && !!projectId;
   }
 
-  private initFirebase(): void {
+  private async initFirebase(): Promise<void> {
+    const [{ initializeApp }, { getAuth, onIdTokenChanged }] = await Promise.all([
+      import('firebase/app'),
+      import('firebase/auth'),
+    ]);
     this.firebaseApp = initializeApp(environment.firebase);
     this.firebaseAuth = getAuth(this.firebaseApp);
 
@@ -154,12 +158,8 @@ export class AuthService {
     });
   }
 
-  /** Current auth token for API calls (credentials token or Firebase ID token). */
+  /** Current Firebase ID token for API calls (refreshed by Firebase when needed). */
   async getIdToken(): Promise<string | null> {
-    const credToken = this.credentialsToken();
-    if (credToken) {
-      return credToken;
-    }
     const user = this.firebaseUser();
     if (!user) {
       return null;
@@ -171,42 +171,7 @@ export class AuthService {
     }
   }
 
-  /** Email & Password login for merchants (restaurants and groceries), branch managers, and admins. */
-  async loginWithCredentials(
-    email: string,
-    password: string,
-  ): Promise<{ ok: boolean; error?: string; user?: OrdaratUser }> {
-    this.busy.set(true);
-    try {
-      const res = await firstValueFrom(
-        this.http.post<{ success: boolean; data?: { token: string; user: OrdaratUser }; error?: { message: string } }>(
-          `${environment.apiUrl}/auth/login`,
-          { email, password },
-        ),
-      );
-
-      if (res.success && res.data) {
-        this.credentialsToken.set(res.data.token);
-        this.profile.set(res.data.user);
-        this.profileError.set(null);
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('ordarat.auth_token', res.data.token);
-          localStorage.setItem('ordarat.auth_user', JSON.stringify(res.data.user));
-        }
-        return { ok: true, user: res.data.user };
-      }
-
-      return { ok: false, error: res.error?.message || 'فشل تسجيل الدخول' };
-    } catch (err: unknown) {
-      const errorObj = err as { error?: { error?: { message?: string }; message?: string } };
-      const msg = errorObj.error?.error?.message || errorObj.error?.message || 'البريد أو كلمة المرور غير صحيحة';
-      return { ok: false, error: msg };
-    } finally {
-      this.busy.set(false);
-    }
-  }
-
-  /** Google popup sign-in, then loads the server-side profile (for general public / customers). */
+  /** Google popup sign-in, then loads the server-side profile. */
   async signInWithGoogle(): Promise<{ ok: boolean; error?: string }> {
     if (!this.isConfigured || !this.firebaseAuth) {
       return { ok: false, error: 'firebase-not-configured' };
@@ -214,6 +179,7 @@ export class AuthService {
 
     this.busy.set(true);
     try {
+      const { GoogleAuthProvider, signInWithPopup } = await import('firebase/auth');
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       await signInWithPopup(this.firebaseAuth, provider);
@@ -248,29 +214,54 @@ export class AuthService {
       }
       this.profileError.set(null);
     } catch {
-      if (this.credentialsToken()) {
-        this.credentialsToken.set(null);
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('ordarat.auth_token');
-          localStorage.removeItem('ordarat.auth_user');
-        }
-      }
       this.profile.set(null);
       this.profileError.set('profile-unavailable');
     }
   }
 
+  /**
+   * Where a signed-in user belongs. All decisions come from the
+   * server-confirmed profile, never from anything the browser claims.
+   */
+  postLoginTarget(returnUrl?: string | null): string {
+    const profile = this.profile();
+    const safeReturn =
+      returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//') ? returnUrl : null;
+
+    if (!profile) {
+      return safeReturn ?? '/';
+    }
+
+    switch (profile.role) {
+      case 'admin':
+        return '/admin/dashboard';
+      case 'merchant':
+        return '/store/dashboard';
+      case 'branch_manager':
+        return '/branch/dashboard';
+    }
+
+    if (profile.merchant_application_status === 'pending') {
+      return '/auth/pending';
+    }
+
+    if (profile.onboarding_state === 'new' || profile.onboarding_state === 'merchant_rejected') {
+      return '/auth/welcome';
+    }
+
+    return safeReturn ?? '/';
+  }
+
   async logout(): Promise<void> {
     if (this.firebaseAuth) {
       try {
+        const { signOut } = await import('firebase/auth');
         await signOut(this.firebaseAuth);
       } catch {}
     }
     this.firebaseUser.set(null);
-    this.credentialsToken.set(null);
     this.profile.set(null);
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('ordarat.auth_token');
       localStorage.removeItem('ordarat.auth_user');
     }
   }

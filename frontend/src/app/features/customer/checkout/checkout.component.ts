@@ -570,6 +570,7 @@ export class CheckoutComponent implements OnInit {
         delivery_latitude: this.latitude,
         delivery_longitude: this.longitude,
         phone: this.phone,
+        name: this.name,
         customer_notes: this.notes || null,
         idempotency_key: this.idempotencyKey,
       })
@@ -579,6 +580,7 @@ export class CheckoutComponent implements OnInit {
           this.cdr.markForCheck();
           this.cart.clearCart();
           this.resetIdempotencyKey();
+          void this.auth.refreshProfile();
           this.router.navigate(['/customer/orders', order.id]);
         },
         error: (err: { message?: string; kind?: string }) => {

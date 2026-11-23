@@ -17,6 +17,11 @@ class User extends Authenticatable
         'name',
         'email',
         'phone',
+        'address',
+        'latitude',
+        'longitude',
+        'profile_completed_at',
+        'onboarding_state',
         'role',
         'status',
         'password',
@@ -32,6 +37,9 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'latitude' => 'float',
+            'longitude' => 'float',
+            'profile_completed_at' => 'datetime',
         ];
     }
 
@@ -78,5 +86,20 @@ class User extends Authenticatable
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class, 'customer_id');
+    }
+
+    public function merchantApplications(): HasMany
+    {
+        return $this->hasMany(MerchantApplication::class);
+    }
+
+    public function latestMerchantApplication(): ?MerchantApplication
+    {
+        return $this->merchantApplications()->latest('id')->first();
+    }
+
+    public function hasCompleteProfile(): bool
+    {
+        return $this->profile_completed_at !== null;
     }
 }

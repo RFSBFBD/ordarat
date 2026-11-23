@@ -79,7 +79,8 @@ class CheckoutService
         float $longitude,
         string $phone,
         ?string $notes,
-        string $idempotencyKey
+        string $idempotencyKey,
+        ?string $customerName = null
     ): Order {
         // Idempotency check: if already processed for this user, return existing order
         $existing = Order::where('idempotency_key', $idempotencyKey)
@@ -93,7 +94,20 @@ class CheckoutService
 
         $quote = $this->getQuote($storeId, $items, $latitude, $longitude);
 
-        return DB::transaction(function () use ($customer, $storeId, $quote, $latitude, $longitude, $phone, $notes, $idempotencyKey) {
+        // A guest-turned-customer completes their data at order time:
+        // whatever they confirmed in the checkout form lands in their profile.
+        if (! $customer->hasCompleteProfile()) {
+            $customer->update([
+                'name' => $customerName ?: $customer->name,
+                'phone' => $phone,
+                'latitude' => $latitude,
+                'longitude' => $longitude,
+                'profile_completed_at' => now(),
+                'onboarding_state' => 'customer',
+            ]);
+        }
+
+        return DB::transaction(function () use ($customer, $customerName, $storeId, $quote, $latitude, $longitude, $phone, $notes, $idempotencyKey) {
             $orderNumber = 'ORD-QNA-'.strtoupper(Str::random(6));
 
             $order = Order::create([
@@ -103,7 +117,7 @@ class CheckoutService
                 'store_id' => $storeId,
                 'branch_id' => $quote['branch']['id'],
                 'zone_id' => $quote['zone']['id'],
-                'customer_name' => $customer->name,
+                'customer_name' => $customerName ?: $customer->name,
                 'customer_phone' => $phone,
                 'delivery_latitude' => $latitude,
                 'delivery_longitude' => $longitude,
@@ -138,12 +152,19 @@ class CheckoutService
 
     public function validateQenaCoordinates(float $latitude, float $longitude): void
     {
-        if (
-            $latitude < self::QENA_MIN_LAT || $latitude > self::QENA_MAX_LAT ||
-            $longitude < self::QENA_MIN_LON || $longitude > self::QENA_MAX_LON
-        ) {
+        if (! self::isWithinQenaBounds($latitude, $longitude)) {
             throw new Exception('خدمة أوردرات متاحة فقط داخل نطاق مدينة قنا حالياً');
         }
+    }
+
+    /**
+     * Shared Qena-city bounds check (checkout, customer onboarding and
+     * merchant applications all enforce the same coverage area).
+     */
+    public static function isWithinQenaBounds(float $latitude, float $longitude): bool
+    {
+        return $latitude >= self::QENA_MIN_LAT && $latitude <= self::QENA_MAX_LAT
+            && $longitude >= self::QENA_MIN_LON && $longitude <= self::QENA_MAX_LON;
     }
 
     /**

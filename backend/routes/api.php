@@ -5,6 +5,7 @@ use App\Http\Controllers\AdminAnalyticsController;
 use App\Http\Controllers\AdminAuditLogController;
 use App\Http\Controllers\AdminBranchManagerController;
 use App\Http\Controllers\AdminCustomerController;
+use App\Http\Controllers\AdminMerchantApplicationController;
 use App\Http\Controllers\AdminOrderController;
 use App\Http\Controllers\AdminSettingsController;
 use App\Http\Controllers\AdminStoreController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\MerchantOrderController;
 use App\Http\Controllers\MerchantProductController;
 use App\Http\Controllers\MerchantStoreController;
 use App\Http\Controllers\MerchantZoneFeeController;
+use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\StoreController;
 use Illuminate\Support\Facades\Route;
@@ -35,7 +37,6 @@ Route::get('/health', function () {
 Route::get('/stores', [StoreController::class, 'index']);
 Route::get('/stores/{store}', [StoreController::class, 'show']);
 Route::post('/checkout/quote', [CheckoutController::class, 'quote']);
-Route::post('/auth/login', [AuthController::class, 'login']);
 
 // Protected Endpoints (Firebase ID Token verification)
 Route::middleware('firebase.auth')->group(function () {
@@ -43,6 +44,12 @@ Route::middleware('firebase.auth')->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/profile', [AuthController::class, 'updateProfile']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+
+    // Unified sign-in onboarding (one Google login for everyone)
+    Route::get('/onboarding/status', [OnboardingController::class, 'status']);
+    Route::post('/onboarding/customer', [OnboardingController::class, 'completeCustomerProfile']);
+    Route::post('/onboarding/skip', [OnboardingController::class, 'skip']);
+    Route::post('/onboarding/merchant-application', [OnboardingController::class, 'submitMerchantApplication']);
 
     // Customer Checkout (Rate limited)
     Route::post('/checkout', [CheckoutController::class, 'checkout'])->middleware('throttle:order_submission');
@@ -58,6 +65,11 @@ Route::middleware('firebase.auth')->group(function () {
 
         Route::get('/customers', [AdminCustomerController::class, 'index']);
         Route::patch('/customers/{user}/status', [AdminCustomerController::class, 'toggleStatus']);
+
+        // Business join applications (approve = the only path to merchant role)
+        Route::get('/merchant-applications', [AdminMerchantApplicationController::class, 'index']);
+        Route::post('/merchant-applications/{application}/approve', [AdminMerchantApplicationController::class, 'approve']);
+        Route::post('/merchant-applications/{application}/reject', [AdminMerchantApplicationController::class, 'reject']);
 
         Route::get('/settings', [AdminSettingsController::class, 'index']);
         Route::put('/settings', [AdminSettingsController::class, 'update']);

@@ -54,6 +54,14 @@ import { ApiService } from '../../../core/services/api.service';
         </button>
         <button
           class="tab-btn"
+          [class.active]="activeTab() === 'join_requests'"
+          (click)="activeTab.set('join_requests')"
+        >
+          {{ t.admin.joinRequests.tabTitle }}
+          <span class="badge-alert" *ngIf="pendingJoinCount() > 0">{{ pendingJoinCount() }}</span>
+        </button>
+        <button
+          class="tab-btn"
           [class.active]="activeTab() === 'branch_managers'"
           (click)="activeTab.set('branch_managers')"
         >
@@ -262,6 +270,68 @@ import { ApiService } from '../../../core/services/api.service';
       </div>
 
       <!-- TAB 3b: BRANCH MANAGERS PROVISIONING (Admin Only) -->
+      <!-- TAB: BUSINESS JOIN REQUESTS -->
+      <div class="card-section" *ngIf="activeTab() === 'join_requests'">
+        <div class="section-title-row">
+          <h3>{{ t.admin.joinRequests.title }}</h3>
+        </div>
+
+        <div class="empty-state" *ngIf="joinRequests.length === 0">
+          {{ t.admin.joinRequests.empty }}
+        </div>
+
+        <div class="table-responsive" *ngIf="joinRequests.length > 0">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>{{ t.admin.joinRequests.businessName }}</th>
+                <th>{{ t.admin.joinRequests.owner }}</th>
+                <th>{{ t.admin.joinRequests.type }}</th>
+                <th>{{ t.admin.joinRequests.area }}</th>
+                <th>{{ t.admin.joinRequests.phone }}</th>
+                <th>{{ t.admin.joinRequests.address }}</th>
+                <th>{{ t.admin.joinRequests.hasBranches }}</th>
+                <th>{{ t.admin.joinRequests.date }}</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let req of joinRequests">
+                <td>
+                  <strong>{{ req.business_name }}</strong>
+                  <div *ngIf="req.status !== 'pending'">
+                    <small [style.color]="req.status === 'approved' ? 'var(--color-success)' : 'var(--color-danger)'">
+                      {{ req.status === 'approved' ? t.admin.joinRequests.statusApproved : t.admin.joinRequests.statusRejected }}
+                    </small>
+                  </div>
+                </td>
+                <td>
+                  {{ req.owner?.name || '-' }}
+                  <div><small>{{ req.owner?.email || '' }}</small></div>
+                </td>
+                <td>{{ req.type === 'restaurant' ? t.admin.stores.typeRestaurant : t.admin.stores.typeGrocery }}</td>
+                <td>{{ req.area_name }}</td>
+                <td class="ltr">{{ req.phone }}</td>
+                <td>{{ req.address }}</td>
+                <td>{{ req.has_branches ? t.admin.joinRequests.yes : t.admin.joinRequests.no }}</td>
+                <td>{{ req.created_at | date: 'short' }}</td>
+                <td *ngIf="req.status === 'pending'">
+                  <button class="btn btn-primary btn-sm" (click)="approveJoinRequest(req)">
+                    {{ t.admin.joinRequests.approveBtn }}
+                  </button>
+                  <button class="btn btn-danger btn-sm" (click)="rejectJoinRequest(req)">
+                    {{ t.admin.joinRequests.rejectBtn }}
+                  </button>
+                </td>
+                <td *ngIf="req.status !== 'pending'">
+                  <small *ngIf="req.admin_note">{{ req.admin_note }}</small>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="card-section" *ngIf="activeTab() === 'branch_managers'">
         <div class="section-title-row">
           <div>
@@ -1516,7 +1586,14 @@ export class AdminDashboardComponent implements OnInit {
   private readonly cdr = inject(ChangeDetectorRef);
 
   activeTab = signal<
-    'stores' | 'orders' | 'customers' | 'branch_managers' | 'settings' | 'analytics' | 'ai'
+    | 'stores'
+    | 'orders'
+    | 'customers'
+    | 'join_requests'
+    | 'branch_managers'
+    | 'settings'
+    | 'analytics'
+    | 'ai'
   >('stores');
   showNewStoreModal = signal<boolean>(false);
   showNewBranchManagerModal = signal<boolean>(false);
@@ -1588,6 +1665,9 @@ export class AdminDashboardComponent implements OnInit {
   stores: any[] = [];
   orders: any[] = [];
   customers: any[] = [];
+  joinRequests: any[] = [];
+  joinRequestsLoaded = false;
+  pendingJoinCount = () => this.joinRequests.filter((r) => r.status === 'pending').length;
 
   ngOnInit(): void {
     this.loadAll();
@@ -1648,6 +1728,15 @@ export class AdminDashboardComponent implements OnInit {
       error: fail,
     });
 
+    this.api.getAdminMerchantApplications().subscribe({
+      next: (apps) => {
+        this.joinRequests = apps;
+        this.joinRequestsLoaded = true;
+        this.cdr.markForCheck();
+      },
+      error: fail,
+    });
+
     this.api.getAdminBranchManagers().subscribe({
       next: (managers) => {
         this.branchManagers = managers.map((m: any) => {
@@ -1678,6 +1767,43 @@ export class AdminDashboardComponent implements OnInit {
 
     this.loadAnalytics();
     this.loadAiData();
+  }
+
+  approveJoinRequest(req: any): void {
+    this.actionError = '';
+    this.actionSuccess = '';
+    this.api.approveMerchantApplication(req.id).subscribe({
+      next: () => {
+        req.status = 'approved';
+        this.actionSuccess = this.t.admin.joinRequests.approvedSuccess + ': ' + req.business_name;
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.actionError = err?.message || 'الإجراء ما تمش. جرّب تاني';
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  rejectJoinRequest(req: any): void {
+    const note = window.prompt(this.t.admin.joinRequests.rejectReasonPrompt);
+    if (!note) {
+      return;
+    }
+    this.actionError = '';
+    this.actionSuccess = '';
+    this.api.rejectMerchantApplication(req.id, note).subscribe({
+      next: () => {
+        req.status = 'rejected';
+        req.admin_note = note;
+        this.actionSuccess = this.t.admin.joinRequests.rejectedSuccess;
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.actionError = err?.message || 'الإجراء ما تمش. جرّب تاني';
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   private toViewOrder(o: any): any {

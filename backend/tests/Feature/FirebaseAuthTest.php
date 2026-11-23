@@ -235,50 +235,102 @@ KEY;
             ->assertJsonPath('data.phone', '01012345678');
     }
 
-    public function test_merchant_can_login_with_email_and_password(): void
+    public function test_verified_google_email_links_existing_account(): void
     {
-        $merchant = User::factory()->create([
-            'email' => 'karnak@ordarat.test',
-            'password' => \Illuminate\Support\Facades\Hash::make('secret123'),
-            'role' => 'merchant',
+        $existing = User::factory()->create([
+            'email' => 'manager@ordarat.test',
+            'role' => 'branch_manager',
             'status' => 'active',
         ]);
 
-        $response = $this->postJson('/api/auth/login', [
-            'email' => 'karnak@ordarat.test',
-            'password' => 'secret123',
+        $token = $this->generateTestToken([
+            'sub' => 'firebase_uid_manager_link',
+            'email' => 'manager@ordarat.test',
+            'email_verified' => true,
         ]);
 
-        $response->assertStatus(200)
-            ->assertJsonPath('success', true)
-            ->assertJsonPath('data.user.email', 'karnak@ordarat.test')
-            ->assertJsonPath('data.user.role', 'merchant')
-            ->assertJsonStructure(['data' => ['token', 'user']]);
-
-        $token = $response->json('data.token');
-
-        $meResponse = $this->withHeader('Authorization', 'Bearer '.$token)
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/auth/me');
 
-        $meResponse->assertStatus(200)
-            ->assertJsonPath('data.email', 'karnak@ordarat.test')
-            ->assertJsonPath('data.role', 'merchant');
+        $response->assertStatus(200)
+            ->assertJsonPath('data.id', $existing->id)
+            ->assertJsonPath('data.role', 'branch_manager');
+
+        $this->assertSame('firebase_uid_manager_link', $existing->fresh()->firebase_uid);
     }
 
-    public function test_invalid_credentials_returns_401(): void
+    public function test_unverified_google_email_cannot_link_existing_account(): void
     {
         User::factory()->create([
-            'email' => 'merchant@ordarat.test',
-            'password' => \Illuminate\Support\Facades\Hash::make('correct_pass'),
-            'role' => 'merchant',
+            'email' => 'victim@ordarat.test',
+            'role' => 'admin',
+            'status' => 'active',
         ]);
 
-        $response = $this->postJson('/api/auth/login', [
-            'email' => 'merchant@ordarat.test',
-            'password' => 'wrong_pass',
+        $token = $this->generateTestToken([
+            'sub' => 'firebase_uid_attacker',
+            'email' => 'victim@ordarat.test',
+            'email_verified' => false,
         ]);
 
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/auth/me');
+
+        // Refused instead of linking into the admin account
         $response->assertStatus(401)
-            ->assertJsonPath('error.code', 'INVALID_CREDENTIALS');
+            ->assertJsonPath('error.code', 'EMAIL_NOT_VERIFIED');
+    }
+
+    public function test_admin_emails_env_bootstraps_admin_role_with_verified_email(): void
+    {
+        config()->set('ordarat.admin_emails', ['boss@ordarat.test']);
+
+        $token = $this->generateTestToken([
+            'sub' => 'firebase_uid_new_admin',
+            'email' => 'boss@ordarat.test',
+            'email_verified' => true,
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/auth/me');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.role', 'admin');
+    }
+
+    public function test_admin_emails_env_ignored_when_email_unverified(): void
+    {
+        config()->set('ordarat.admin_emails', ['boss@ordarat.test']);
+
+        $token = $this->generateTestToken([
+            'sub' => 'firebase_uid_fake_admin',
+            'email' => 'boss@ordarat.test',
+            'email_verified' => false,
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/auth/me');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.role', 'customer');
+    }
+
+    public function test_frontend_supplied_role_is_never_accepted(): void
+    {
+        $token = $this->generateTestToken([
+            'sub' => 'firebase_uid_role_spoof',
+            'email' => 'spoof@ordarat.test',
+            'email_verified' => true,
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/auth/profile', [
+                'name' => 'محاول صلاحية',
+                'phone' => '01012345678',
+                'role' => 'admin',
+            ]);
+
+        $response->assertStatus(200);
+        $this->assertSame('customer', User::where('firebase_uid', 'firebase_uid_role_spoof')->first()->role);
     }
 }

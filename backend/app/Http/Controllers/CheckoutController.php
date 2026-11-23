@@ -53,6 +53,7 @@ class CheckoutController extends Controller
             'delivery_latitude' => 'required|numeric|between:-90,90',
             'delivery_longitude' => 'required|numeric|between:-180,180',
             'phone' => ['required', 'string', 'regex:/^01[0125][0-9]{8}$/'],
+            'name' => 'nullable|string|max:100',
             'customer_notes' => 'nullable|string|max:500',
             'idempotency_key' => 'required|string|max:100',
         ]);
@@ -66,7 +67,8 @@ class CheckoutController extends Controller
                 (float) $validated['delivery_longitude'],
                 $validated['phone'],
                 $validated['customer_notes'] ?? null,
-                $validated['idempotency_key']
+                $validated['idempotency_key'],
+                $validated['name'] ?? null
             );
 
             return response()->json([

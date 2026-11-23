@@ -25,6 +25,17 @@ return [
     'subscription_whatsapp_number' => env('SUBSCRIPTION_WHATSAPP_NUMBER', '+201055370118'),
 
     /*
+     * Server-side admin bootstrap list (comma-separated emails in the
+     * ADMIN_EMAILS environment variable). A Google sign-in whose token
+     * carries a Google-verified email matching this list starts as admin.
+     * Never configurable from the browser.
+     */
+    'admin_emails' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('ADMIN_EMAILS', ''))
+    ))),
+
+    /*
     |--------------------------------------------------------------------------
     | Order & Delivery Configuration
     |--------------------------------------------------------------------------

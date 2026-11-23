@@ -158,6 +158,6 @@ export class HomeComponent {
   }
 
   goToMerchantInfo() {
-    this.router.navigate(['/auth/merchant-info']);
+    this.router.navigate(['/auth/login']);
   }
 }

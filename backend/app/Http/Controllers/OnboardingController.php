@@ -1,0 +1,179 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\MerchantApplication;
+use App\Services\CheckoutService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+/**
+ * Unified Google sign-in onboarding. One login for everyone; the browser
+ * only records what the user WANTS to be. Actual privileges are granted
+ * exclusively server-side: customers complete their profile (now or at
+ * first order), business owners submit a join application that an admin
+ * must approve before any merchant role exists.
+ */
+class OnboardingController extends Controller
+{
+    public function status(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $application = $user->latestMerchantApplication();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'profile_complete' => $user->hasCompleteProfile(),
+                'onboarding_state' => $user->onboarding_state,
+                'name' => $user->name,
+                'phone' => $user->phone,
+                'address' => $user->address,
+                'merchant_application' => $application ? [
+                    'id' => $application->id,
+                    'business_name' => $application->business_name,
+                    'status' => $application->status,
+                    'admin_note' => $application->status === MerchantApplication::STATUS_REJECTED
+                        ? $application->admin_note
+                        : null,
+                ] : null,
+            ],
+        ]);
+    }
+
+    public function completeCustomerProfile(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:100',
+            'phone' => ['required', 'string', 'regex:/^01[0125][0-9]{8}$/'],
+            'address' => 'nullable|string|max:255',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+        ], [
+            'name.required' => 'اكتب اسمك',
+            'phone.regex' => 'الرقم لازم يكون مصري (يبدأ بـ01 ويتكوّن من ١١ رقم)',
+        ]);
+
+        if (! CheckoutService::isWithinQenaBounds((float) $validated['latitude'], (float) $validated['longitude'])) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'OUT_OF_COVERAGE',
+                    'message' => 'للأسف لسه مش بنوصّل للمنطقة دي. الخدمة داخل مدينة قنا بس',
+                ],
+            ], 422);
+        }
+
+        $user = $request->user();
+        $user->update([
+            'name' => $validated['name'],
+            'phone' => $validated['phone'],
+            'address' => $validated['address'] ?? null,
+            'latitude' => $validated['latitude'],
+            'longitude' => $validated['longitude'],
+            'profile_completed_at' => now(),
+            'onboarding_state' => 'customer',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'profile_complete' => true,
+                'onboarding_state' => $user->onboarding_state,
+            ],
+        ]);
+    }
+
+    /**
+     * The visitor chose "just looking": they keep browsing and shopping, and
+     * their data is only required when they actually place an order.
+     */
+    public function skip(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if ($user->onboarding_state === 'new') {
+            $user->update(['onboarding_state' => 'customer']);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => ['onboarding_state' => $user->onboarding_state],
+        ]);
+    }
+
+    public function submitMerchantApplication(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $pending = $user->merchantApplications()->where('status', MerchantApplication::STATUS_PENDING)->first();
+        if ($pending) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'APPLICATION_ALREADY_PENDING',
+                    'message' => 'طلبك مسجل عندنا وبيتمراجع دلوقتي. هنرد عليك قريب',
+                ],
+            ], 422);
+        }
+
+        if ($user->isMerchant()) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'ALREADY_MERCHANT',
+                    'message' => 'حسابك متفعل كصاحب نشاط بالفعل',
+                ],
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'business_name' => 'required|string|max:120',
+            'type' => 'required|string|in:restaurant,grocery',
+            'phone' => ['required', 'string', 'regex:/^01[0125][0-9]{8}$/'],
+            'address' => 'required|string|max:255',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'has_branches' => 'required|boolean',
+            'area_name' => 'required|string|max:120',
+        ], [
+            'business_name.required' => 'اكتب اسم النشاط',
+            'type.in' => 'اختار نوع النشاط: مطعم أو بقالة',
+            'phone.regex' => 'الرقم لازم يكون مصري (يبدأ بـ01 ويتكوّن من ١١ رقم)',
+            'address.required' => 'اكتب عنوان النشاط',
+            'area_name.required' => 'اكتب المنطقة اللي نشاطك فيها داخل قنا',
+        ]);
+
+        if (! CheckoutService::isWithinQenaBounds((float) $validated['latitude'], (float) $validated['longitude'])) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'OUT_OF_COVERAGE',
+                    'message' => 'النشاط لازم يكون داخل مدينة قنا. شارك موقع الفرع الرئيسي',
+                ],
+            ], 422);
+        }
+
+        $application = $user->merchantApplications()->create([
+            'business_name' => $validated['business_name'],
+            'type' => $validated['type'],
+            'phone' => $validated['phone'],
+            'address' => $validated['address'],
+            'latitude' => $validated['latitude'],
+            'longitude' => $validated['longitude'],
+            'has_branches' => $validated['has_branches'],
+            'area_name' => $validated['area_name'],
+            'status' => MerchantApplication::STATUS_PENDING,
+        ]);
+
+        $user->update(['onboarding_state' => 'merchant_applied']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'طلبك وصل للإدارة وهيتراجع. هتلاقي حالة الطلب في حسابك',
+            'data' => [
+                'id' => $application->id,
+                'status' => $application->status,
+            ],
+        ], 201);
+    }
+}

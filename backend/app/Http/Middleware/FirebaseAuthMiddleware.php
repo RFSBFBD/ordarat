@@ -51,70 +51,38 @@ class FirebaseAuthMiddleware
 
         $token = substr($authHeader, 7);
 
-        // 1. Check if token is an internal Ordarat token (issued for merchants, branch managers, admins)
-        $appKey = config('app.key');
-        if (str_starts_with((string) $appKey, 'base64:')) {
-            $appKey = base64_decode(substr((string) $appKey, 7));
-        }
-
-        try {
-            $decoded = \Firebase\JWT\JWT::decode($token, new \Firebase\JWT\Key($appKey, 'HS256'));
-            $claims = (array) $decoded;
-
-            if (($claims['iss'] ?? '') === 'ordarat-api' && ! empty($claims['sub'])) {
-                $user = User::find($claims['sub']);
-                if (! $user) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => [
-                            'code' => 'USER_NOT_FOUND',
-                            'message' => 'المستخدم غير موجود',
-                        ],
-                    ], 401);
-                }
-
-                if (! $user->isActive()) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => [
-                            'code' => 'ACCOUNT_SUSPENDED',
-                            'message' => 'حسابك متوقف. اتواصل معنا',
-                        ],
-                    ], 403);
-                }
-
-                Auth::setUser($user);
-                $request->setUserResolver(fn () => $user);
-
-                return $next($request);
-            }
-        } catch (\Firebase\JWT\ExpiredException $e) {
-            return response()->json([
-                'success' => false,
-                'error' => [
-                    'code' => 'TOKEN_EXPIRED',
-                    'message' => 'انتهت صلاحية الجلسة. سجّل دخولك من جديد',
-                ],
-            ], 401);
-        } catch (Exception $e) {
-            // Not an internal HS256 token, proceed to Firebase RS256 token validation
-        }
-
         try {
             $claims = $this->firebaseAuth->verifyIdToken($token);
             $firebaseUid = $claims['sub'];
             $email = $claims['email'] ?? null;
+            // Roles and account linking may ONLY rely on an email that Google
+            // itself verified inside the signed token. A frontend-supplied
+            // email or role is never accepted as proof.
+            $emailVerified = ($claims['email_verified'] ?? false) === true;
+            $trustedEmail = $emailVerified ? $email : null;
             $name = $claims['name'] ?? ($email ? explode('@', $email)[0] : 'عميل قنا');
 
             // Find or create user. Role is ALWAYS set by database (Decision 3 & Phase 3 rules)
             $user = User::where('firebase_uid', $firebaseUid)->first();
 
-            if (! $user && $email) {
-                // Link if existing email was registered
-                $user = User::where('email', $email)->first();
+            if (! $user && $trustedEmail) {
+                // Link if existing email was registered (admin / branch manager / merchant)
+                $user = User::where('email', $trustedEmail)->first();
                 if ($user) {
                     $user->update(['firebase_uid' => $firebaseUid]);
                 }
+            }
+
+            // An unverified Google email must never collide with an existing
+            // account: refuse instead of linking or duplicating.
+            if (! $user && $email && ! $trustedEmail && User::where('email', $email)->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => [
+                        'code' => 'EMAIL_NOT_VERIFIED',
+                        'message' => 'بريدك في جوجل غير موثّق. وثّق بريدك من حساب Google ثم سجّل دخولك تاني',
+                    ],
+                ], 401);
             }
 
             if (! $user) {
@@ -122,7 +90,7 @@ class FirebaseAuthMiddleware
                     'firebase_uid' => $firebaseUid,
                     'name' => $name,
                     'email' => $email,
-                    'role' => 'customer', // strictly server-side default
+                    'role' => $this->resolveInitialRole($trustedEmail), // strictly server-side
                     'status' => 'active',
                 ]);
             }
@@ -151,5 +119,26 @@ class FirebaseAuthMiddleware
                 ],
             ], 401);
         }
+    }
+
+    /**
+     * Initial role for a brand-new Firebase user. Everyone starts as a
+     * customer; only emails explicitly listed in the ADMIN_EMAILS server
+     * environment variable bootstrap as platform admins. Merchants gain
+     * their role exclusively through an approved join application.
+     */
+    protected function resolveInitialRole(?string $email): string
+    {
+        if ($email) {
+            $adminEmails = array_map(
+                fn ($e) => mb_strtolower(trim($e)),
+                config('ordarat.admin_emails', [])
+            );
+            if (in_array(mb_strtolower($email), $adminEmails, true)) {
+                return 'admin';
+            }
+        }
+
+        return 'customer';
     }
 }

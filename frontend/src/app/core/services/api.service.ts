@@ -69,6 +69,7 @@ export interface QuoteResponse {
 
 export interface CheckoutRequest extends QuoteRequest {
   phone: string;
+  name?: string | null;
   customer_notes?: string | null;
   idempotency_key: string;
 }
@@ -114,6 +115,53 @@ export interface ApiOrder {
   statusHistory?: ApiStatusHistoryEntry[];
 }
 
+export interface OnboardingStatus {
+  profile_complete: boolean;
+  onboarding_state: string;
+  name: string | null;
+  phone: string | null;
+  address: string | null;
+  merchant_application: {
+    id: number;
+    business_name: string;
+    status: 'pending' | 'approved' | 'rejected';
+    admin_note: string | null;
+  } | null;
+}
+
+export interface CustomerOnboardingRequest {
+  name: string;
+  phone: string;
+  address?: string | null;
+  latitude: number;
+  longitude: number;
+}
+
+export interface MerchantApplicationRequest {
+  business_name: string;
+  type: 'restaurant' | 'grocery';
+  phone: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  has_branches: boolean;
+  area_name: string;
+}
+
+export interface AdminMerchantApplication {
+  id: number;
+  business_name: string;
+  type: 'restaurant' | 'grocery';
+  phone: string;
+  address: string;
+  has_branches: boolean;
+  area_name: string;
+  status: 'pending' | 'approved' | 'rejected';
+  admin_note: string | null;
+  created_at: string;
+  owner: { id: number; name: string; email: string | null; phone: string | null } | null;
+}
+
 interface Envelope<T> {
   success: boolean;
   data: T;
@@ -156,6 +204,53 @@ export class ApiService {
   getOrder(id: number): Observable<ApiOrder> {
     return this.http
       .get<Envelope<ApiOrder>>(`${this.base}/orders/${id}`)
+      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+  }
+
+  // ---- Unified sign-in onboarding ----
+
+  getOnboardingStatus(): Observable<OnboardingStatus> {
+    return this.http
+      .get<Envelope<OnboardingStatus>>(`${this.base}/onboarding/status`)
+      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+  }
+
+  completeCustomerOnboarding(req: CustomerOnboardingRequest): Observable<{ profile_complete: boolean }> {
+    return this.http
+      .post<Envelope<{ profile_complete: boolean }>>(`${this.base}/onboarding/customer`, req)
+      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+  }
+
+  skipOnboarding(): Observable<{ onboarding_state: string }> {
+    return this.http
+      .post<Envelope<{ onboarding_state: string }>>(`${this.base}/onboarding/skip`, {})
+      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+  }
+
+  submitMerchantApplication(req: MerchantApplicationRequest): Observable<{ id: number; status: string }> {
+    return this.http
+      .post<Envelope<{ id: number; status: string }>>(`${this.base}/onboarding/merchant-application`, req)
+      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+  }
+
+  // ---- Admin: business join applications ----
+
+  getAdminMerchantApplications(status?: string): Observable<AdminMerchantApplication[]> {
+    const params = status ? `?status=${encodeURIComponent(status)}` : '';
+    return this.http
+      .get<Envelope<AdminMerchantApplication[]>>(`${this.base}/admin/merchant-applications${params}`)
+      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+  }
+
+  approveMerchantApplication(id: number): Observable<{ store_id: number }> {
+    return this.http
+      .post<Envelope<{ store_id: number }>>(`${this.base}/admin/merchant-applications/${id}/approve`, {})
+      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+  }
+
+  rejectMerchantApplication(id: number, note: string): Observable<unknown> {
+    return this.http
+      .post<Envelope<unknown>>(`${this.base}/admin/merchant-applications/${id}/reject`, { note })
       .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
   }
 
@@ -591,6 +686,15 @@ export interface MerchantMenuDraft {
 /** Maps Laravel's error envelope (and network failures) to a display-safe shape. */
 export function toApiError(err: unknown): ApiError {
   if (err instanceof HttpErrorResponse) {
+    // The API answered but not with JSON (e.g. a static SPA fallback page):
+    // treat it as "backend not wired" instead of hanging on a loader.
+    if (err.status === 200 || (err.status === 0 && !(err.error instanceof ProgressEvent))) {
+      return {
+        kind: 'network',
+        status: err.status,
+        message: 'السيرفر مش متاح دلوقتي. تأكد إن الباك إند شغال وحاول تاني',
+      };
+    }
     if (err.status === 0) {
       return {
         kind: 'network',
