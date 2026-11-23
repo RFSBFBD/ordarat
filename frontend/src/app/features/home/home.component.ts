@@ -2,11 +2,12 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AR_TRANSLATIONS } from '../../core/constants/translations';
+import { IconComponent } from '../../shared/components/icon/icon.component';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent],
   template: `
     <section class="welcome-section">
       <div class="welcome-card">
@@ -15,14 +16,14 @@ import { AR_TRANSLATIONS } from '../../core/constants/translations';
 
         <div class="cards-grid">
           <div class="action-card client-card" (click)="goToCustomer()">
-            <div class="card-icon">🛵</div>
+            <div class="card-icon"><app-icon name="bike" [size]="40"></app-icon></div>
             <h3 class="card-title">{{ t.customer.startScreen.clientCardTitle }}</h3>
             <p class="card-desc">{{ t.customer.startScreen.clientCardDesc }}</p>
             <button class="btn btn-primary">{{ t.customer.startScreen.clientBtn }}</button>
           </div>
 
           <div class="action-card merchant-card" (click)="goToMerchantInfo()">
-            <div class="card-icon">🏪</div>
+            <div class="card-icon"><app-icon name="store" [size]="40"></app-icon></div>
             <h3 class="card-title">{{ t.customer.startScreen.merchantCardTitle }}</h3>
             <p class="card-desc">{{ t.customer.startScreen.merchantCardDesc }}</p>
             <button class="btn btn-accent">{{ t.customer.startScreen.merchantBtn }}</button>
@@ -95,7 +96,7 @@ import { AR_TRANSLATIONS } from '../../core/constants/translations';
         border-color: rgba(245, 179, 53, 0.4);
       }
       .card-icon {
-        font-size: 2.5rem;
+        color: var(--color-primary);
         margin-bottom: 0.75rem;
       }
       .card-title {

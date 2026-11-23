@@ -35,6 +35,7 @@ Route::get('/health', function () {
 Route::get('/stores', [StoreController::class, 'index']);
 Route::get('/stores/{store}', [StoreController::class, 'show']);
 Route::post('/checkout/quote', [CheckoutController::class, 'quote']);
+Route::post('/auth/login', [AuthController::class, 'login']);
 
 // Protected Endpoints (Firebase ID Token verification)
 Route::middleware('firebase.auth')->group(function () {
@@ -46,8 +47,8 @@ Route::middleware('firebase.auth')->group(function () {
     // Customer Checkout (Rate limited)
     Route::post('/checkout', [CheckoutController::class, 'checkout'])->middleware('throttle:order_submission');
 
-    // Admin Endpoints
-    Route::prefix('admin')->group(function () {
+    // Admin Endpoints (server-side role isolation)
+    Route::prefix('admin')->middleware('role:admin')->group(function () {
         Route::get('/stores', [AdminStoreController::class, 'index']);
         Route::post('/stores', [AdminStoreController::class, 'store']);
         Route::patch('/stores/{store}/status', [AdminStoreController::class, 'toggleStatus']);
@@ -84,7 +85,7 @@ Route::middleware('firebase.auth')->group(function () {
     });
 
     // Branch Manager Endpoints (Branch Dashboard)
-    Route::prefix('branch')->group(function () {
+    Route::prefix('branch')->middleware('role:branch_manager,admin')->group(function () {
         Route::get('/dashboard', [BranchDashboardController::class, 'dashboard']);
         Route::get('/orders', [BranchDashboardController::class, 'orders']);
         Route::patch('/status', [BranchDashboardController::class, 'toggleStatus']);
@@ -92,7 +93,7 @@ Route::middleware('firebase.auth')->group(function () {
     });
 
     // Merchant / Store Owner Endpoints
-    Route::prefix('merchant')->group(function () {
+    Route::prefix('merchant')->middleware('role:merchant,admin')->group(function () {
         Route::get('/stores', [MerchantStoreController::class, 'index']);
         Route::get('/stores/{store}', [MerchantStoreController::class, 'show']);
         Route::put('/stores/{store}', [MerchantStoreController::class, 'update']);

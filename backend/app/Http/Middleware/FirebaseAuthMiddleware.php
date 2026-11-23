@@ -51,6 +51,55 @@ class FirebaseAuthMiddleware
 
         $token = substr($authHeader, 7);
 
+        // 1. Check if token is an internal Ordarat token (issued for merchants, branch managers, admins)
+        $appKey = config('app.key');
+        if (str_starts_with((string) $appKey, 'base64:')) {
+            $appKey = base64_decode(substr((string) $appKey, 7));
+        }
+
+        try {
+            $decoded = \Firebase\JWT\JWT::decode($token, new \Firebase\JWT\Key($appKey, 'HS256'));
+            $claims = (array) $decoded;
+
+            if (($claims['iss'] ?? '') === 'ordarat-api' && ! empty($claims['sub'])) {
+                $user = User::find($claims['sub']);
+                if (! $user) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => [
+                            'code' => 'USER_NOT_FOUND',
+                            'message' => 'المستخدم غير موجود',
+                        ],
+                    ], 401);
+                }
+
+                if (! $user->isActive()) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => [
+                            'code' => 'ACCOUNT_SUSPENDED',
+                            'message' => 'حسابك متوقف. اتواصل معنا',
+                        ],
+                    ], 403);
+                }
+
+                Auth::setUser($user);
+                $request->setUserResolver(fn () => $user);
+
+                return $next($request);
+            }
+        } catch (\Firebase\JWT\ExpiredException $e) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'TOKEN_EXPIRED',
+                    'message' => 'انتهت صلاحية الجلسة. سجّل دخولك من جديد',
+                ],
+            ], 401);
+        } catch (Exception $e) {
+            // Not an internal HS256 token, proceed to Firebase RS256 token validation
+        }
+
         try {
             $claims = $this->firebaseAuth->verifyIdToken($token);
             $firebaseUid = $claims['sub'];

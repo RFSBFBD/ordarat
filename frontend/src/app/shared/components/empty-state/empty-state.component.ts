@@ -1,13 +1,14 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { IconComponent } from '../icon/icon.component';
 
 @Component({
   selector: 'app-empty-state',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent],
   template: `
     <div class="empty-container">
-      <div class="empty-icon">{{ icon }}</div>
+      <div class="empty-icon"><app-icon [name]="icon" [size]="48"></app-icon></div>
       <h3 class="empty-title">{{ title }}</h3>
       <p *ngIf="subtitle" class="empty-subtitle">{{ subtitle }}</p>
       <button *ngIf="actionLabel" class="btn btn-primary" (click)="action.emit()">
@@ -30,7 +31,7 @@ import { CommonModule } from '@angular/common';
         width: 100%;
       }
       .empty-icon {
-        font-size: 3rem;
+        color: var(--color-text-muted);
         margin-bottom: 0.75rem;
       }
       .empty-title {
@@ -60,7 +61,7 @@ import { CommonModule } from '@angular/common';
   ],
 })
 export class EmptyStateComponent {
-  @Input() icon = '📦';
+  @Input() icon = 'package';
   @Input() title = 'مفيش بيانات متاحة دلوقتي';
   @Input() subtitle = '';
   @Input() actionLabel = '';

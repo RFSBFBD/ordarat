@@ -1,112 +1,158 @@
 import { TestBed } from '@angular/core/testing';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { of } from 'rxjs';
 import { MerchantDashboardComponent } from './merchant-dashboard.component';
+import { ApiService } from '../../../core/services/api.service';
 
-describe('MerchantDashboardComponent - Branches & Filters', () => {
+const storesResponse = [
+  { id: 1, name: 'مطعم الكرنك الأصيل (قنا)', type: 'restaurant', is_active: true, is_accepting_orders: true, working_hours: { from: '09:00', to: '23:00' } },
+];
+
+const branchesResponse = [
+  { id: 1, name: 'فرع وسط البلد', address: 'شارع الجمهورية', phone: '01012345678', is_active: true, is_accepting_orders: true, working_hours: { from: '09:00', to: '23:00' } },
+  { id: 2, name: 'فرع المعنا', address: 'طريق مصر أسوان', phone: '01099887766', is_active: true, is_accepting_orders: true, working_hours: { from: '10:00', to: '00:00' } },
+];
+
+const zonesResponse = {
+  branch_id: 1,
+  branch_name: 'فرع وسط البلد',
+  pricing_policy: 'STORE_OWNER_PRICED',
+  zones: [
+    { zone_id: 1, zone_name: 'وسط البلد', delivery_fee: '10.00', is_served: true },
+    { zone_id: 2, zone_name: 'المعنا', delivery_fee: '15.00', is_served: true },
+  ],
+};
+
+const productsResponse = [
+  { id: 1, name: 'وجبة كباب وكفتة', price: '130.00', description: 'نصف كيلو', is_available: true, category: { id: 1, name: 'مشويات' } },
+  { id: 2, name: 'ساندوتش كفتة قناوي', price: '45.00', description: null, is_available: false, category: null },
+];
+
+const ordersResponse = {
+  orders: [
+    {
+      id: 101, order_number: 'ORD-QNA-501', branch_id: 1, status: 'new',
+      customer_name: 'محمود حسن', customer_phone: '01098765432', customer_notes: null,
+      items_total: '175.00', delivery_fee: '15.00', grand_total: '190.00', payment_method: 'COD',
+      created_at: new Date(Date.now() - 3 * 60000).toISOString(),
+      branch: { id: 1, name: 'فرع وسط البلد' },
+      zone: { id: 1, name: 'وسط البلد' },
+      items: [{ id: 1, product_name: 'وجبة كباب', unit_price: '130.00', quantity: 1, subtotal: '130.00' }],
+    },
+    {
+      id: 102, order_number: 'ORD-QNA-502', branch_id: 2, status: 'preparing',
+      customer_name: 'إبراهيم ناصر', customer_phone: '01122334455', customer_notes: null,
+      items_total: '90.00', delivery_fee: '15.00', grand_total: '105.00', payment_method: 'COD',
+      created_at: new Date(Date.now() - 18 * 60000).toISOString(),
+      branch: { id: 2, name: 'فرع المعنا' },
+      zone: { id: 2, name: 'الجامعة' },
+      items: [],
+    },
+  ],
+  new_orders_count: 1,
+  branches_overview: [],
+  play_audio_alert: false,
+};
+
+describe('MerchantDashboardComponent', () => {
   let component: MerchantDashboardComponent;
+  let api: any;
 
   beforeEach(async () => {
+    api = {
+      getMerchantStores: vi.fn().mockReturnValue(of(storesResponse)),
+      getMerchantBranches: vi.fn().mockReturnValue(of(branchesResponse)),
+      getMerchantBranchZones: vi.fn().mockReturnValue(of(zonesResponse)),
+      getMerchantProducts: vi.fn().mockReturnValue(of(productsResponse)),
+      getMerchantOrders: vi.fn().mockReturnValue(of(ordersResponse)),
+      getMerchantMenuDrafts: vi.fn().mockReturnValue(of([])),
+      updateMerchantStore: vi.fn().mockReturnValue(of({ ...storesResponse[0], is_accepting_orders: false })),
+      updateMerchantBranch: vi.fn().mockReturnValue(of({ ...branchesResponse[0], is_accepting_orders: false })),
+      updateMerchantOrderStatus: vi.fn().mockReturnValue(of(ordersResponse.orders[0])),
+      toggleMerchantProductAvailability: vi.fn().mockReturnValue(of({ ...productsResponse[0], is_available: false })),
+      updateMerchantProduct: vi.fn().mockReturnValue(of(productsResponse[0])),
+      createMerchantProduct: vi.fn().mockReturnValue(of({ id: 99, name: 'صنف جديد', price: '50.00', description: '', is_available: true, category: null })),
+      saveMerchantBranchZones: vi.fn().mockReturnValue(of({})),
+      extractMerchantMenu: vi.fn(),
+      importMerchantMenuDraft: vi.fn(),
+      generateMerchantProductImage: vi.fn(),
+    };
+
     await TestBed.configureTestingModule({
       imports: [MerchantDashboardComponent],
+      providers: [{ provide: ApiService, useValue: api }],
     }).compileComponents();
 
     const fixture = TestBed.createComponent(MerchantDashboardComponent);
     component = fixture.componentInstance;
+    fixture.detectChanges();
   });
 
-  it('should initialize with branches and their order acceptance status', () => {
-    expect(component.branches.length).toBeGreaterThanOrEqual(2);
-    component.branches.forEach((b) => {
-      expect(b.is_accepting_orders).toBeDefined();
-      expect(b.working_hours).toBeDefined();
-    });
+  it('loads store, branches, zones, products and orders from the API on init', () => {
+    expect(component).toBeTruthy();
+    expect(component.currentStore.name).toContain('مطعم الكرنك');
+    expect(api.getMerchantBranches).toHaveBeenCalledWith(1);
+    expect(api.getMerchantProducts).toHaveBeenCalledWith(1);
+    expect(api.getMerchantOrders).toHaveBeenCalled();
+    expect(api.getMerchantBranchZones).toHaveBeenCalledWith(1, 1);
+    expect(component.branches.length).toBe(2);
+    expect(component.branchZones.length).toBe(2);
+    expect(component.products.length).toBe(2);
+    expect(component.orders.length).toBe(2);
+    expect(component.loading).toBe(false);
   });
 
-  it('should filter orders by specific branch', () => {
-    component.selectedBranchFilter = 'all';
-    expect(component.filteredOrders().length).toBe(component.orders.length);
-
+  it('filters orders by branch and status', () => {
     component.selectedBranchFilter = '1';
-    const branch1Orders = component.filteredOrders();
-    expect(branch1Orders.length).toBeGreaterThan(0);
-    branch1Orders.forEach((o) => {
-      expect(o.branchId).toBe(1);
-    });
-
-    component.selectedBranchFilter = '2';
-    const branch2Orders = component.filteredOrders();
-    expect(branch2Orders.length).toBeGreaterThan(0);
-    branch2Orders.forEach((o) => {
-      expect(o.branchId).toBe(2);
-    });
+    expect(component.filteredOrders().length).toBe(1);
+    component.selectedBranchFilter = 'all';
+    component.orderFilter = 'in_progress';
+    expect(component.filteredOrders().length).toBe(1);
+    expect(component.filteredOrders()[0].status).toBe('preparing');
   });
 
-  it('should toggle branch order acceptance from merchant dashboard', () => {
-    const branch1 = component.branches[0];
-    const initialStatus = branch1.is_accepting_orders;
-    component.toggleBranchReceiving(branch1);
-    expect(branch1.is_accepting_orders).toBe(!initialStatus);
+  it('toggles store receiving through the API', () => {
+    component.toggleReceiving();
+    expect(api.updateMerchantStore).toHaveBeenCalledWith(1, { is_accepting_orders: false });
+    expect(component.currentStore.is_accepting_orders).toBe(false);
   });
 
-  describe('Merchant AI Tools', () => {
-    it('should switch to ai_tools tab and display features', () => {
-      component.activeTab.set('ai_tools');
-      expect(component.activeTab()).toBe('ai_tools');
-      expect(component.aiAvailable()).toBe(true);
-    });
+  it('toggles branch receiving through the API', () => {
+    const branch = component.branches[0];
+    component.toggleBranchReceiving(branch);
+    expect(api.updateMerchantBranch).toHaveBeenCalledWith(1, 1, { is_accepting_orders: false });
+    expect(branch.is_accepting_orders).toBe(false);
+  });
 
-    it('should toggle privacy blur on menu preview image', () => {
-      expect(component.isBlurActive()).toBe(false);
-      component.toggleBlur();
-      expect(component.isBlurActive()).toBe(true);
-      component.toggleBlur();
-      expect(component.isBlurActive()).toBe(false);
-    });
+  it('advances order status through the API', () => {
+    const order = component.orders[0];
+    component.updateOrderStatus(order, 'accepted');
+    expect(api.updateMerchantOrderStatus).toHaveBeenCalledWith(1, 101, 'accepted');
+    expect(order.status).toBe('accepted');
+  });
 
-    it('should review draft items and import accepted items into products list', () => {
-      const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
-      const initialProductCount = component.products.length;
-      const draft = component.menuDrafts()[0];
+  it('rejects an order with reason through the API', () => {
+    const order = component.orders[0];
+    component.openRejectModal(order);
+    component.rejectionReason = 'نفاد الكباب';
+    component.confirmOrderRejection();
+    expect(api.updateMerchantOrderStatus).toHaveBeenCalledWith(1, 101, 'rejected', 'نفاد الكباب');
+    expect(order.status).toBe('rejected');
+  });
 
-      expect(draft.items.length).toBeGreaterThan(0);
-      const ambiguousItem = draft.items.find((i: any) => i.is_ambiguous);
-      expect(ambiguousItem).toBeDefined();
+  it('saves zone fees for the selected branch through the API', () => {
+    component.saveZoneFees();
+    expect(api.saveMerchantBranchZones).toHaveBeenCalledWith(1, 1, [
+      { zone_id: 1, delivery_fee: 10, is_served: true },
+      { zone_id: 2, delivery_fee: 15, is_served: true },
+    ]);
+    expect(component.actionSuccess).toContain('تم حفظ');
+  });
 
-      // Fix ambiguous item price and accept it
-      ambiguousItem.price = 175.0;
-      ambiguousItem.is_accepted = true;
-
-      // Import accepted items
-      component.importAcceptedDraftItems(draft);
-
-      expect(component.products.length).toBeGreaterThan(initialProductCount);
-      expect(draft.status).toBe('imported');
-
-      alertMock.mockRestore();
-    });
-
-    it('should generate illustrative product image and allow human approval', () => {
-      const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
-      vi.useFakeTimers();
-
-      component.imageGenProductName = 'كباب حلة صعيدي بالفريك';
-      component.imageGenCategory = 'طواجن';
-      component.generateProductImage();
-
-      vi.advanceTimersByTime(600);
-
-      const generated = component.generatedImage();
-      expect(generated).toBeDefined();
-      expect(generated?.name).toBe('كباب حلة صعيدي بالفريك');
-      expect(generated?.is_illustrative).toBe(true);
-      expect(generated?.is_approved).toBe(false);
-
-      // Human review and approve
-      component.approveGeneratedImage();
-      expect(component.generatedImage()?.is_approved).toBe(true);
-
-      vi.useRealTimers();
-      alertMock.mockRestore();
-    });
+  it('creates a product through the API', () => {
+    component.newProduct = { name: 'صنف جديد', price: 50 as any, description: '' };
+    component.saveNewProduct();
+    expect(api.createMerchantProduct).toHaveBeenCalledWith(1, { name: 'صنف جديد', price: 50, description: '' });
+    expect(component.products[0].id).toBe(99);
   });
 });

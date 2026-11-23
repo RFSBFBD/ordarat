@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
+use App\Models\Branch;
 use App\Models\Order;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -70,7 +71,7 @@ class BranchDashboardController extends Controller
             ], 403);
         }
 
-        $query = $branch->orders()->with(['items', 'customer']);
+        $query = $branch->orders()->with(['items', 'customer', 'zone']);
 
         if ($request->has('status')) {
             $query->where('status', $request->query('status'));

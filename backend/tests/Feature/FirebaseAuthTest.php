@@ -234,4 +234,51 @@ KEY;
         $goodResponse->assertStatus(200)
             ->assertJsonPath('data.phone', '01012345678');
     }
+
+    public function test_merchant_can_login_with_email_and_password(): void
+    {
+        $merchant = User::factory()->create([
+            'email' => 'karnak@ordarat.test',
+            'password' => \Illuminate\Support\Facades\Hash::make('secret123'),
+            'role' => 'merchant',
+            'status' => 'active',
+        ]);
+
+        $response = $this->postJson('/api/auth/login', [
+            'email' => 'karnak@ordarat.test',
+            'password' => 'secret123',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.user.email', 'karnak@ordarat.test')
+            ->assertJsonPath('data.user.role', 'merchant')
+            ->assertJsonStructure(['data' => ['token', 'user']]);
+
+        $token = $response->json('data.token');
+
+        $meResponse = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/auth/me');
+
+        $meResponse->assertStatus(200)
+            ->assertJsonPath('data.email', 'karnak@ordarat.test')
+            ->assertJsonPath('data.role', 'merchant');
+    }
+
+    public function test_invalid_credentials_returns_401(): void
+    {
+        User::factory()->create([
+            'email' => 'merchant@ordarat.test',
+            'password' => \Illuminate\Support\Facades\Hash::make('correct_pass'),
+            'role' => 'merchant',
+        ]);
+
+        $response = $this->postJson('/api/auth/login', [
+            'email' => 'merchant@ordarat.test',
+            'password' => 'wrong_pass',
+        ]);
+
+        $response->assertStatus(401)
+            ->assertJsonPath('error.code', 'INVALID_CREDENTIALS');
+    }
 }

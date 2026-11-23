@@ -36,6 +36,13 @@ return [
     'max_image_upload_mb' => (int) env('MAX_IMAGE_UPLOAD_MB', 4),
 
     /*
+     * Filesystem disk used for merchant-uploaded store/product images.
+     * Keep "public" for local development; set UPLOADS_DISK=neon after
+     * configuring Neon Object Storage (see docs/NEON_SETUP.md).
+     */
+    'uploads_disk' => env('UPLOADS_DISK', 'public'),
+
+    /*
     |--------------------------------------------------------------------------
     | Payment Method
     |--------------------------------------------------------------------------

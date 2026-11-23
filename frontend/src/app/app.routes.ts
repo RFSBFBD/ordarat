@@ -9,6 +9,7 @@ import { MerchantInfoComponent } from './features/merchant/merchant-info/merchan
 import { AdminDashboardComponent } from './features/admin/admin-dashboard/admin-dashboard.component';
 import { BranchDashboardComponent } from './features/branch/branch-dashboard/branch-dashboard.component';
 import { LoginComponent } from './features/auth/login/login.component';
+import { authGuard, roleGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   // 1. Home / Landing View
@@ -22,34 +23,46 @@ export const routes: Routes = [
       { path: 'stores', component: StoresListComponent },
       { path: 'stores/:id', component: StoreDetailComponent },
       { path: 'checkout', component: CheckoutComponent },
-      { path: 'orders/:id', component: OrderTrackingComponent },
+      { path: 'orders/:id', component: OrderTrackingComponent, canActivate: [authGuard] },
     ],
   },
 
-  // 3. Store / Merchant Zone
+  // 3. Store / Merchant Zone (isolated: merchant role only)
   {
     path: 'store',
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
-      { path: 'dashboard', component: MerchantDashboardComponent },
+      {
+        path: 'dashboard',
+        component: MerchantDashboardComponent,
+        canActivate: [roleGuard('merchant', 'admin')],
+      },
     ],
   },
 
-  // 3b. Branch Manager Zone
+  // 3b. Branch Manager Zone (isolated: branch managers only)
   {
     path: 'branch',
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
-      { path: 'dashboard', component: BranchDashboardComponent },
+      {
+        path: 'dashboard',
+        component: BranchDashboardComponent,
+        canActivate: [roleGuard('branch_manager', 'admin')],
+      },
     ],
   },
 
-  // 4. Admin Zone
+  // 4. Admin Zone (isolated: admin role only)
   {
     path: 'admin',
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
-      { path: 'dashboard', component: AdminDashboardComponent },
+      {
+        path: 'dashboard',
+        component: AdminDashboardComponent,
+        canActivate: [roleGuard('admin')],
+      },
     ],
   },
 

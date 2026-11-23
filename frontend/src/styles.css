@@ -23,7 +23,9 @@ body {
   margin: 0;
   padding: 0;
   width: 100%;
+  max-width: 100%;
   min-height: 100vh;
+  overflow-x: hidden;
   background-color: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-body);
@@ -44,4 +46,21 @@ h6,
 
 button {
   font-family: var(--font-body);
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+input,
+textarea,
+select {
+  max-width: 100%;
+}
+
+.app-icon {
+  flex-shrink: 0;
 }

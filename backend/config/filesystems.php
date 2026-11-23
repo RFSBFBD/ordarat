@@ -60,6 +60,25 @@ return [
             'report' => false,
         ],
 
+        /*
+         * Neon Object Storage (S3-compatible).
+         * Create a bucket in the Neon console, generate S3 credentials,
+         * then set NEON_* variables and FILESYSTEM_DISK=neon.
+         * Requires: composer require league/flysystem-aws-s3-v3
+         */
+        'neon' => [
+            'driver' => 's3',
+            'key' => env('NEON_ACCESS_KEY_ID'),
+            'secret' => env('NEON_SECRET_ACCESS_KEY'),
+            'region' => env('NEON_REGION', 'eu-central-1'),
+            'bucket' => env('NEON_BUCKET'),
+            'endpoint' => env('NEON_ENDPOINT'),
+            'url' => env('NEON_PUBLIC_URL'),
+            'use_path_style_endpoint' => env('NEON_USE_PATH_STYLE_ENDPOINT', false),
+            'throw' => false,
+            'report' => false,
+        ],
+
     ],
 
     /*

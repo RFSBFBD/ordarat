@@ -1,226 +1,380 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AR_TRANSLATIONS } from '../../../core/constants/translations';
+import { ApiService, ApiOrder } from '../../../core/services/api.service';
+import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { LoadingStateComponent } from '../../../shared/components/loading-state/loading-state.component';
+import { ErrorStateComponent } from '../../../shared/components/error-state/error-state.component';
+
+const STATUS_FLOW = ['new', 'accepted', 'preparing', 'out_for_delivery', 'delivered'] as const;
 
 @Component({
   selector: 'app-order-tracking',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent, LoadingStateComponent, ErrorStateComponent],
   template: `
     <div class="tracking-page">
       <div class="tracking-card">
-        <h2 class="order-id">متابعة الطلب #{{ orderId }}</h2>
-        <span class="city-notice">مدينة قنا</span>
+        <h2 class="title">{{ pageTitle }}</h2>
 
-        <!-- Status Timeline -->
-        <div class="status-box">
-          <div class="status-indicator">
-            <div class="pulse-dot"></div>
-            <span class="current-status">{{ currentStatusText }}</span>
-          </div>
-          <span class="last-updated">آخر تحديث: منذ لحظات</span>
-        </div>
+        <app-loading-state *ngIf="loading" message="بنحمّل حالة طلبك..."></app-loading-state>
 
-        <div class="steps-progress">
-          <div class="step" [class.done]="isStepDone(1)">
-            <span class="step-num">١</span>
-            <span class="step-label">جديد</span>
-          </div>
-          <div class="step" [class.done]="isStepDone(2)">
-            <span class="step-num">٢</span>
-            <span class="step-label">مقبول</span>
-          </div>
-          <div class="step" [class.done]="isStepDone(3)">
-            <span class="step-num">٣</span>
-            <span class="step-label">بيتحضّر</span>
-          </div>
-          <div class="step" [class.done]="isStepDone(4)">
-            <span class="step-num">٤</span>
-            <span class="step-label">خرج للتوصيل</span>
-          </div>
-          <div class="step" [class.done]="isStepDone(5)">
-            <span class="step-num">٥</span>
-            <span class="step-label">اتسلّم</span>
-          </div>
-        </div>
+        <app-error-state
+          *ngIf="!loading && loadError"
+          [message]="loadError"
+          (retry)="loadOrder()"
+        ></app-error-state>
 
-        <!-- Order Summary Detail -->
-        <div class="order-details-box">
-          <h4 class="details-title">تفاصيل الطلب</h4>
-          <div class="detail-row">
-            <span>المحل:</span>
-            <strong>مطعم الكرنك</strong>
+        <ng-container *ngIf="!loading && !loadError && order">
+          <!-- Status box -->
+          <div class="status-box" [class.cancelled]="isCancelled()">
+            <div class="status-indicator">
+              <app-icon [name]="statusIcon()" [size]="40" />
+              <span class="current-status">{{ currentStatusText }}</span>
+            </div>
+            <p class="last-updated" *ngIf="lastUpdatedText">{{ lastUpdatedText }}</p>
+            <p class="rejection" *ngIf="rejectionText">{{ rejectionText }}</p>
           </div>
-          <div class="detail-row">
-            <span>طريقة الدفع:</span>
-            <strong>كاش عند الاستلام (COD)</strong>
-          </div>
-          <div class="detail-row">
-            <span>الإجمالي:</span>
-            <strong class="price">١٣٥ جنيه</strong>
-          </div>
-        </div>
 
-        <button class="btn btn-home" (click)="goHome()">الرجوع للرئيسية</button>
+          <!-- Progress steps -->
+          <div class="steps" *ngIf="!isCancelled()">
+            <div
+              class="step"
+              *ngFor="let step of steps; let i = index"
+              [class.done]="i <= currentStepIndex"
+              [class.current]="i === currentStepIndex"
+            >
+              <div class="step-dot">
+                <app-icon *ngIf="i < currentStepIndex" name="check" [size]="14" />
+              </div>
+              <span class="step-label">{{ step.label }}</span>
+            </div>
+          </div>
+
+          <!-- Order details -->
+          <div class="details-box">
+            <div class="detail-row">
+              <span>المتجر</span>
+              <strong>{{ order.store?.name }}</strong>
+            </div>
+            <div class="detail-row" *ngIf="order.branch">
+              <span>الفرع</span>
+              <strong>{{ order.branch?.name }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>الدفع</span>
+              <strong>كاش عند الاستلام</strong>
+            </div>
+            <div class="detail-row total">
+              <span>الإجمالي</span>
+              <strong>{{ order.grand_total }} جنيه</strong>
+            </div>
+          </div>
+
+          <div class="items-box" *ngIf="orderItems.length > 0">
+            <div class="item-row" *ngFor="let item of orderItems">
+              <span>{{ item.product_name }} × {{ item.quantity }}</span>
+              <span>{{ item.subtotal }} جنيه</span>
+            </div>
+          </div>
+
+          <button class="btn btn-refresh" (click)="loadOrder()">
+            <app-icon name="refresh-cw" [size]="16" />
+            تحديث الحالة
+          </button>
+
+          <button class="btn btn-home" (click)="goHome()">الرئيسية</button>
+        </ng-container>
       </div>
     </div>
   `,
   styles: [
     `
       .tracking-page {
-        max-width: 600px;
+        max-width: 560px;
         margin: 0 auto;
       }
       .tracking-card {
         background: #ffffff;
         border-radius: 14px;
-        padding: 2rem 1.5rem;
+        padding: 2rem;
         border: 1px solid var(--color-border);
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
-        text-align: center;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
       }
-      .order-id {
+      .title {
         font-family: var(--font-heading);
         color: var(--color-primary);
-        margin: 0;
-        font-size: 1.6rem;
-      }
-      .city-notice {
-        display: inline-block;
-        margin-top: 0.25rem;
-        font-size: 0.8rem;
-        color: var(--color-text-muted);
+        margin-top: 0;
+        margin-bottom: 1.5rem;
+        font-size: 1.4rem;
+        text-align: center;
       }
       .status-box {
-        margin: 1.75rem 0;
-        padding: 1.25rem;
-        background: #f4efe6;
+        background: #f0f7f9;
         border-radius: 10px;
+        padding: 1.5rem;
+        text-align: center;
+        margin-bottom: 1.5rem;
+      }
+      .status-box.cancelled {
+        background: #fff5f5;
       }
       .status-indicator {
         display: flex;
+        flex-direction: column;
         align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        margin-bottom: 0.35rem;
+        gap: 0.6rem;
+        color: var(--color-primary);
       }
-      .pulse-dot {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        background: var(--color-accent);
-        animation: pulse 1.5s infinite;
-      }
-      @keyframes pulse {
-        0% {
-          transform: scale(0.95);
-          box-shadow: 0 0 0 0 rgba(245, 179, 53, 0.7);
-        }
-        70% {
-          transform: scale(1.1);
-          box-shadow: 0 0 0 8px rgba(245, 179, 53, 0);
-        }
-        100% {
-          transform: scale(0.95);
-          box-shadow: 0 0 0 0 rgba(245, 179, 53, 0);
-        }
+      .status-box.cancelled .status-indicator {
+        color: var(--color-danger);
       }
       .current-status {
         font-family: var(--font-heading);
         font-size: 1.25rem;
         font-weight: 700;
-        color: var(--color-text);
       }
       .last-updated {
         font-size: 0.8rem;
         color: var(--color-text-muted);
+        margin: 0.5rem 0 0;
       }
-      .steps-progress {
+      .rejection {
+        color: var(--color-danger);
+        font-size: 0.9rem;
+        margin: 0.5rem 0 0;
+      }
+      .steps {
         display: flex;
         justify-content: space-between;
-        margin: 2rem 0;
-        position: relative;
+        margin-bottom: 1.5rem;
       }
       .step {
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 0.35rem;
-        z-index: 1;
+        flex: 1;
+        color: var(--color-text-muted);
       }
-      .step-num {
-        width: 32px;
-        height: 32px;
+      .step-dot {
+        width: 26px;
+        height: 26px;
         border-radius: 50%;
-        background: #e2d9c5;
-        color: #1e2a2f;
+        border: 2px solid var(--color-border);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 700;
-        font-size: 0.9rem;
+        background: #fff;
+        color: #fff;
       }
-      .step.done .step-num {
+      .step.done .step-dot {
         background: var(--color-primary);
-        color: #ffffff;
+        border-color: var(--color-primary);
       }
-      .step-label {
-        font-size: 0.75rem;
-        color: var(--color-text-muted);
+      .step.current .step-dot {
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px rgba(14, 90, 107, 0.2);
       }
-      .step.done .step-label {
+      .step.done {
         color: var(--color-primary);
         font-weight: 600;
       }
-      .order-details-box {
-        text-align: right;
-        background: #faf8f2;
-        border: 1px solid var(--color-border);
-        border-radius: 8px;
-        padding: 1rem;
-        margin-bottom: 1.5rem;
+      .step-label {
+        font-size: 0.72rem;
+        text-align: center;
       }
-      .details-title {
-        margin: 0 0 0.75rem 0;
-        font-family: var(--font-heading);
+      .details-box,
+      .items-box {
+        background: #faf7f0;
+        border-radius: 10px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1rem;
       }
-      .detail-row {
+      .detail-row,
+      .item-row {
         display: flex;
         justify-content: space-between;
-        margin-bottom: 0.5rem;
-        font-size: 0.9rem;
+        padding: 0.3rem 0;
+        font-size: 0.92rem;
       }
-      .price {
-        color: var(--color-primary);
+      .detail-row.total {
+        border-top: 1px dashed var(--color-border);
+        padding-top: 0.6rem;
+        margin-top: 0.4rem;
+        font-size: 1.05rem;
+      }
+      .btn {
+        width: 100%;
+        padding: 0.75rem;
+        border-radius: 8px;
+        font-weight: 700;
+        cursor: pointer;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+      }
+      .btn-refresh {
+        background: var(--color-primary);
+        color: #fff;
+        margin-bottom: 0.6rem;
       }
       .btn-home {
         background: transparent;
+        color: var(--color-text-muted);
         border: 1px solid var(--color-border);
-        padding: 0.65rem 1.5rem;
-        border-radius: 8px;
-        cursor: pointer;
-        font-weight: 600;
+      }
+      @media (max-width: 480px) {
+        .tracking-card {
+          padding: 1.25rem 1rem;
+        }
       }
     `,
   ],
 })
-export class OrderTrackingComponent {
+export class OrderTrackingComponent implements OnInit, OnDestroy {
+  private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly api = inject(ApiService);
+  private readonly cdr = inject(ChangeDetectorRef);
   protected readonly t = AR_TRANSLATIONS;
 
-  orderId = '101';
-  currentStep = 2; // accepted
+  order: ApiOrder | null = null;
+  loading = true;
+  loadError = '';
+  pageTitle = '';
+
+  private orderId = 0;
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
+
+  readonly steps = [
+    { key: 'new', label: 'استلام الطلب' },
+    { key: 'accepted', label: 'اتقبل' },
+    { key: 'preparing', label: 'بيتحضّر' },
+    { key: 'out_for_delivery', label: 'خرج للتوصيل' },
+    { key: 'delivered', label: 'اتسلّم' },
+  ];
+
+  get currentStepIndex(): number {
+    if (!this.order) {
+      return 0;
+    }
+    const idx = STATUS_FLOW.indexOf(this.order.status as (typeof STATUS_FLOW)[number]);
+    return idx >= 0 ? idx : 0;
+  }
 
   get currentStatusText(): string {
-    return this.t.customer.orderTracking.statusAccepted;
+    if (!this.order) {
+      return '';
+    }
+    const tr = this.t.customer.orderTracking;
+    switch (this.order.status) {
+      case 'new':
+        return tr.statusNew;
+      case 'accepted':
+        return tr.statusAccepted;
+      case 'preparing':
+        return tr.statusPreparing;
+      case 'out_for_delivery':
+        return tr.statusOutForDelivery;
+      case 'delivered':
+        return tr.statusDelivered;
+      case 'cancelled':
+        return tr.statusCancelled;
+      case 'rejected':
+        return tr.statusRejected;
+      default:
+        return this.order.status;
+    }
   }
 
-  isStepDone(step: number): boolean {
-    return step <= this.currentStep;
+  get lastUpdatedText(): string {
+    const history = this.order?.status_history ?? this.order?.statusHistory ?? [];
+    if (history.length === 0) {
+      return '';
+    }
+    const latest = history[history.length - 1];
+    return this.t.customer.orderTracking.lastUpdated.replace(
+      '{time}',
+      new Date(latest.created_at).toLocaleString('ar-EG'),
+    );
   }
 
-  goHome() {
+  get rejectionText(): string {
+    if (!this.order || (this.order.status !== 'rejected' && this.order.status !== 'cancelled')) {
+      return '';
+    }
+    const reason = (this.order as { rejection_reason?: string | null }).rejection_reason;
+    return reason ? this.t.customer.orderTracking.rejectionReason.replace('{reason}', reason) : '';
+  }
+
+  get orderItems() {
+    return this.order?.items ?? [];
+  }
+
+  ngOnInit(): void {
+    this.orderId = Number(this.route.snapshot.paramMap.get('id'));
+    this.pageTitle = this.t.customer.orderTracking.title.replace('{id}', String(this.orderId));
+    this.loadOrder();
+
+    // Light polling so the customer sees the store's progress live.
+    this.pollTimer = setInterval(() => this.loadOrder(true), 30000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+    }
+  }
+
+  isCancelled(): boolean {
+    return this.order?.status === 'cancelled' || this.order?.status === 'rejected';
+  }
+
+  statusIcon(): string {
+    switch (this.order?.status) {
+      case 'delivered':
+        return 'check';
+      case 'out_for_delivery':
+        return 'bike';
+      case 'preparing':
+        return 'chef-hat';
+      case 'cancelled':
+      case 'rejected':
+        return 'circle-x';
+      default:
+        return 'clock';
+    }
+  }
+
+  loadOrder(silent = false): void {
+    if (!silent) {
+      this.loading = true;
+    }
+    this.loadError = '';
+    this.api.getOrder(this.orderId).subscribe({
+      next: (order) => {
+        this.order = order;
+        this.pageTitle = this.t.customer.orderTracking.title.replace('{id}', order.order_number);
+        this.loading = false;
+        if (['delivered', 'cancelled', 'rejected'].includes(order.status) && this.pollTimer) {
+          clearInterval(this.pollTimer);
+          this.pollTimer = null;
+        }
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.loadError = err?.message || this.t.customer.orderTracking.refreshFailed;
+        this.loading = false;
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  goHome(): void {
     this.router.navigate(['/']);
   }
 }

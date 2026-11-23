@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use App\Services\FirebaseAuthService;
+use Firebase\JWT\JWT;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
@@ -14,6 +17,71 @@ class AuthController extends Controller
     public function __construct(FirebaseAuthService $firebaseAuth)
     {
         $this->firebaseAuth = $firebaseAuth;
+    }
+
+    public function login(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|string',
+        ], [
+            'email.required' => 'أدخل البريد الإلكتروني',
+            'email.email' => 'البريد الإلكتروني غير صالح',
+            'password.required' => 'أدخل كلمة المرور',
+        ]);
+
+        $user = User::where('email', $validated['email'])->first();
+
+        if (! $user || ! Hash::check($validated['password'], $user->password)) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'INVALID_CREDENTIALS',
+                    'message' => 'البريد الإلكتروني أو كلمة المرور غير صحيحة',
+                ],
+            ], 401);
+        }
+
+        if (! $user->isActive()) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'ACCOUNT_SUSPENDED',
+                    'message' => 'حسابك متوقف. اتواصل مع الإدارة',
+                ],
+            ], 403);
+        }
+
+        $key = config('app.key');
+        if (str_starts_with((string) $key, 'base64:')) {
+            $key = base64_decode(substr((string) $key, 7));
+        }
+
+        $payload = [
+            'iss' => 'ordarat-api',
+            'sub' => (string) $user->id,
+            'email' => $user->email,
+            'role' => $user->role,
+            'iat' => time(),
+            'exp' => time() + (30 * 24 * 60 * 60),
+        ];
+
+        $token = JWT::encode($payload, $key, 'HS256');
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'token' => $token,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => $user->phone,
+                    'role' => $user->role,
+                    'status' => $user->status,
+                ],
+            ],
+        ]);
     }
 
     public function me(Request $request): JsonResponse

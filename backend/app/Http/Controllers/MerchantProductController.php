@@ -9,6 +9,7 @@ use App\Models\SystemSetting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 
 class MerchantProductController extends Controller
 {
@@ -158,8 +159,9 @@ class MerchantProductController extends Controller
             'image' => "required|image|mimes:jpeg,png,jpg,webp|max:{$maxKb}",
         ]);
 
-        $path = $request->file('image')->store('products', 'public');
-        $imageUrl = "/storage/{$path}";
+        $disk = config('ordarat.uploads_disk', 'public');
+        $path = $request->file('image')->store('products', $disk);
+        $imageUrl = $disk === 'public' ? "/storage/{$path}" : Storage::disk($disk)->url($path);
 
         $product->update(['image_url' => $imageUrl]);
 

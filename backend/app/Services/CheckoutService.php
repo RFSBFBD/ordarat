@@ -187,10 +187,54 @@ class CheckoutService
         return $closest;
     }
 
+    /**
+     * Resolve which active zone a delivery location belongs to.
+     *
+     * Priority:
+     *  1. A zone whose coverage circle (center + radius) contains the point;
+     *     when several contain it, the nearest center wins.
+     *  2. The nearest zone that has coordinates (customer just outside every radius).
+     *  3. Legacy fallback: first active zone (zones created before coordinates existed).
+     */
+    protected function resolveZoneForLocation(float $lat, float $lon): ?Zone
+    {
+        $zones = Zone::where('is_active', true)->get();
+
+        if ($zones->isEmpty()) {
+            return null;
+        }
+
+        $geoZones = $zones->filter(
+            fn (Zone $z) => $z->center_lat !== null && $z->center_lng !== null && $z->radius_km !== null
+        );
+
+        $distanceTo = fn (Zone $z) => $this->haversineGreatCircleDistance(
+            $lat,
+            $lon,
+            (float) $z->center_lat,
+            (float) $z->center_lng
+        );
+
+        $containing = $geoZones
+            ->filter(fn (Zone $z) => $distanceTo($z) <= (float) $z->radius_km)
+            ->sortBy($distanceTo)
+            ->first();
+
+        if ($containing) {
+            return $containing;
+        }
+
+        if ($geoZones->isNotEmpty()) {
+            return $geoZones->sortBy($distanceTo)->first();
+        }
+
+        return $zones->first();
+    }
+
     protected function determineZoneFee(Branch $branch, float $lat, float $lon): array
     {
-        // 1. Identify closest zone in Qena City
-        $zone = Zone::where('is_active', true)->first();
+        // 1. Resolve the customer's zone from their actual coordinates
+        $zone = $this->resolveZoneForLocation($lat, $lon);
 
         // 2. Lookup the store-owner-configured delivery fee for this branch & zone
         if ($zone) {

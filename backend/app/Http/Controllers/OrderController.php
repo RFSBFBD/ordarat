@@ -30,10 +30,19 @@ class OrderController extends Controller
                 ->with(['customer', 'store', 'branch', 'items'])
                 ->latest()
                 ->get();
-        } else {
+        } elseif ($user->isAdmin()) {
             $orders = Order::with(['customer', 'store', 'branch', 'items'])
                 ->latest()
                 ->get();
+        } else {
+            // Unknown or missing role must never expose orders.
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'FORBIDDEN_ROLE',
+                    'message' => 'الحساب ده معندوش صلاحية عرض الطلبات',
+                ],
+            ], 403);
         }
 
         return response()->json([
@@ -65,6 +74,29 @@ class OrderController extends Controller
         ]);
 
         $fromStatus = $order->status;
+
+        // Enforce a strict status lifecycle so orders cannot jump backwards
+        // or skip stages (e.g. delivered -> new, or new -> delivered).
+        $allowedTransitions = [
+            'new' => ['accepted', 'rejected', 'cancelled'],
+            'accepted' => ['preparing', 'cancelled'],
+            'preparing' => ['out_for_delivery', 'cancelled'],
+            'out_for_delivery' => ['delivered'],
+            'delivered' => [],
+            'cancelled' => [],
+            'rejected' => [],
+        ];
+
+        if (! in_array($validated['status'], $allowedTransitions[$fromStatus] ?? [], true)) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'INVALID_STATUS_TRANSITION',
+                    'message' => "لا يمكن نقل الطلب من حالة ({$fromStatus}) إلى ({$validated['status']})",
+                ],
+            ], 422);
+        }
+
         $order->update([
             'status' => $validated['status'],
             'rejection_reason' => $validated['rejection_reason'] ?? $order->rejection_reason,

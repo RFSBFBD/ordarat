@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureRoleMiddleware;
 use App\Http\Middleware\FirebaseAuthMiddleware;
 use App\Http\Middleware\SecurityHeadersMiddleware;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -27,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(SecurityHeadersMiddleware::class);
         $middleware->alias([
             'firebase.auth' => FirebaseAuthMiddleware::class,
+            'role' => EnsureRoleMiddleware::class,
             'throttle' => ThrottleRequests::class,
         ]);
     })

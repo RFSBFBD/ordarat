@@ -1,13 +1,14 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { IconComponent } from '../icon/icon.component';
 
 @Component({
   selector: 'app-error-state',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent],
   template: `
     <div class="error-container">
-      <div class="error-icon">⚠️</div>
+      <div class="error-icon"><app-icon name="triangle-alert" [size]="44"></app-icon></div>
       <h3 class="error-title">{{ title }}</h3>
       <p *ngIf="message" class="error-message">{{ message }}</p>
       <button *ngIf="showRetry" class="btn btn-retry" (click)="retry.emit()">
@@ -30,7 +31,7 @@ import { CommonModule } from '@angular/common';
         width: 100%;
       }
       .error-icon {
-        font-size: 2.75rem;
+        color: var(--color-danger);
         margin-bottom: 0.75rem;
       }
       .error-title {

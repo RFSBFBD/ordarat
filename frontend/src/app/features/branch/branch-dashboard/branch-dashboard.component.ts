@@ -1,7 +1,8 @@
-import { Component, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AR_TRANSLATIONS } from '../../../core/constants/translations';
+import { ApiOrder, ApiService } from '../../../core/services/api.service';
 
 export interface BranchOrder {
   id: number;
@@ -29,6 +30,13 @@ export interface BranchOrder {
   imports: [CommonModule, FormsModule],
   template: `
     <div class="branch-dashboard">
+      <div class="preview-banner" role="note" *ngIf="loading">جاري تحميل بيانات الفرع...</div>
+      <div class="preview-banner" role="alert" *ngIf="!loading && loadError">
+        {{ loadError }}
+        <button class="toggle-btn" (click)="loadDashboard()">إعادة المحاولة</button>
+      </div>
+      <div class="preview-banner" role="alert" *ngIf="actionError">{{ actionError }}</div>
+
       <!-- Header -->
       <div class="dash-header">
         <div class="branch-info-block">
@@ -36,7 +44,7 @@ export interface BranchOrder {
             <h2 class="title">{{ currentBranch.name }}</h2>
             <span class="role-badge">مسؤول الفرع</span>
           </div>
-          <p class="store-name">📍 {{ currentBranch.storeName }} - مدينة قنا</p>
+          <p class="store-name">{{ currentBranch.storeName }} - مدينة قنا</p>
           <div class="working-hours-tag">
             ⏰ <strong>مواعيد العمل:</strong> {{ currentBranch.working_hours.open }} إلى
             {{ currentBranch.working_hours.close }}
@@ -49,7 +57,7 @@ export interface BranchOrder {
             [class.sound-on]="soundEnabled()"
             (click)="toggleSound()"
           >
-            {{ soundEnabled() ? '🔔 صوت التنبيه مفعّل' : '🔕 صوت التنبيه مكتوم' }}
+            {{ soundEnabled() ? 'صوت التنبيه مفعّل' : 'صوت التنبيه مكتوم' }}
           </button>
 
           <div class="toggle-wrap">
@@ -67,7 +75,7 @@ export interface BranchOrder {
 
       <!-- Warning if closed -->
       <div class="alert-banner warning" *ngIf="!currentBranch.is_accepting_orders">
-        ⚠️ <strong>تنبيه:</strong> تم إيقاف استقبال الطلبات لهذا الفرع. لن يتم توجيه أي طلبات جديدة
+        <strong>تنبيه:</strong> تم إيقاف استقبال الطلبات لهذا الفرع. لن يتم توجيه أي طلبات جديدة
         للفرع من النظام حتى إعادة التفعيل.
       </div>
 
@@ -138,7 +146,7 @@ export interface BranchOrder {
               <div class="order-id-wrap">
                 <span class="order-num">{{ ord.orderNumber }}</span>
                 <span class="order-time">{{ ord.timeAgo }}</span>
-                <span class="branch-pill">📍 {{ ord.branchName }}</span>
+                <span class="branch-pill">{{ ord.branchName }}</span>
               </div>
               <span class="badge" [ngClass]="'badge-' + ord.status">{{
                 getStatusLabel(ord.status)
@@ -147,10 +155,10 @@ export interface BranchOrder {
 
             <div class="customer-info-box">
               <p class="customer-name"><strong>العميل:</strong> {{ ord.customerName }}</p>
-              <p class="customer-phone" dir="ltr">📞 {{ ord.customerPhone }}</p>
-              <p class="customer-address">📍 {{ ord.deliveryAddress }} ({{ ord.zoneName }})</p>
+              <p class="customer-phone" dir="ltr">{{ ord.customerPhone }}</p>
+              <p class="customer-address">{{ ord.deliveryAddress }} ({{ ord.zoneName }})</p>
               <p class="customer-notes" *ngIf="ord.notes">
-                📝 <em>ملاحظة العميل: {{ ord.notes }}</em>
+                <em>ملاحظة العميل: {{ ord.notes }}</em>
               </p>
             </div>
 
@@ -174,14 +182,14 @@ export interface BranchOrder {
                 class="btn btn-success"
                 (click)="updateOrderStatus(ord, 'accepted')"
               >
-                ✅ {{ t.branch.actions.accept }}
+                {{ t.branch.actions.accept }}
               </button>
               <button
                 *ngIf="ord.status === 'new'"
                 class="btn btn-danger-outline"
                 (click)="openRejectModal(ord)"
               >
-                ❌ {{ t.branch.actions.reject }}
+                {{ t.branch.actions.reject }}
               </button>
 
               <button
@@ -189,7 +197,7 @@ export interface BranchOrder {
                 class="btn btn-primary"
                 (click)="updateOrderStatus(ord, 'preparing')"
               >
-                🍳 {{ t.branch.actions.prepare }}
+                {{ t.branch.actions.prepare }}
               </button>
 
               <button
@@ -197,7 +205,7 @@ export interface BranchOrder {
                 class="btn btn-warning"
                 (click)="updateOrderStatus(ord, 'out_for_delivery')"
               >
-                🛵 {{ t.branch.actions.dispatch }}
+                {{ t.branch.actions.dispatch }}
               </button>
 
               <button
@@ -205,7 +213,7 @@ export interface BranchOrder {
                 class="btn btn-success"
                 (click)="updateOrderStatus(ord, 'delivered')"
               >
-                📦 {{ t.branch.actions.deliver }}
+                {{ t.branch.actions.deliver }}
               </button>
             </div>
           </div>
@@ -213,7 +221,7 @@ export interface BranchOrder {
 
         <!-- Empty State -->
         <div class="empty-orders-state" *ngIf="filteredOrders().length === 0">
-          <div class="empty-icon">📭</div>
+          <div class="empty-icon"></div>
           <h4>{{ t.branch.emptyOrders }}</h4>
           <p>أي طلب يتم توجيهه لأقرب فرع للعميل سيظهر هنا فوراً مع تنبيه صوتي.</p>
         </div>
@@ -251,6 +259,18 @@ export interface BranchOrder {
   `,
   styles: [
     `
+      .preview-banner {
+        background: #fff8e6;
+        border: 1px dashed var(--color-accent);
+        color: #7a5b00;
+        border-radius: 8px;
+        padding: 0.6rem 1rem;
+        margin-bottom: 1rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-align: center;
+      }
+
       .branch-dashboard {
         max-width: 1080px;
         margin: 0 auto;
@@ -647,84 +667,119 @@ export interface BranchOrder {
     `,
   ],
 })
-export class BranchDashboardComponent {
+export class BranchDashboardComponent implements OnInit {
   protected readonly t = AR_TRANSLATIONS;
+
+  private readonly api = inject(ApiService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   soundEnabled = signal<boolean>(true);
   selectedOrderForRejection = signal<BranchOrder | null>(null);
 
+  loading = true;
+  loadError = '';
+  actionError = '';
   orderFilter = 'all';
   rejectionReason = 'نفاد أحد الأصناف المطلوبة حالياً في الفرع';
 
   currentBranch = {
-    id: 1,
-    name: 'فرع وسط البلد',
-    storeName: 'مطعم الكرنك الأصيل',
-    is_accepting_orders: true,
-    working_hours: {
-      open: '09:00 ص',
-      close: '11:00 م',
-    },
+    id: 0,
+    name: '',
+    storeName: '',
+    is_accepting_orders: false,
+    working_hours: { open: '', close: '' },
   };
 
-  orders: BranchOrder[] = [
-    {
-      id: 101,
-      orderNumber: 'ORD-QNA-501',
-      branchId: 1,
-      branchName: 'فرع وسط البلد',
-      storeName: 'مطعم الكرنك الأصيل',
-      customerName: 'محمود حسن',
-      customerPhone: '01098765432',
-      deliveryAddress: 'شارع الهلال الأحمر، بجوار مسجد سيدي عبد الرحيم القنائي',
-      zoneName: 'وسط البلد',
-      notes: 'الرجاء الاتصال عند الوصول',
-      status: 'new',
-      timeAgo: 'منذ 3 دقائق',
-      itemsTotal: 175.0,
-      deliveryFee: 15.0,
-      grandTotal: 190.0,
-      items: [
-        { name: 'وجبة كباب وكفتة مشوي على الفحم', quantity: 1, price: 130.0 },
-        { name: 'ساندوتش كفتة قناوي', quantity: 1, price: 45.0 },
-      ],
-    },
-    {
-      id: 102,
-      orderNumber: 'ORD-QNA-502',
-      branchId: 1,
-      branchName: 'فرع وسط البلد',
-      storeName: 'مطعم الكرنك الأصيل',
-      customerName: 'إبراهيم ناصر',
-      customerPhone: '01122334455',
-      deliveryAddress: 'مساكن عثمان، شقة 4',
-      zoneName: 'الجامعة ومساكن الشباب',
-      notes: 'من غير شطة',
-      status: 'preparing',
-      timeAgo: 'منذ 18 دقيقة',
-      itemsTotal: 90.0,
-      deliveryFee: 15.0,
-      grandTotal: 105.0,
-      items: [{ name: 'ساندوتش كفتة قناوي', quantity: 2, price: 45.0 }],
-    },
-    {
-      id: 103,
-      orderNumber: 'ORD-QNA-498',
-      branchId: 1,
-      branchName: 'فرع وسط البلد',
-      storeName: 'مطعم الكرنك الأصيل',
-      customerName: 'ياسر فاروق',
-      customerPhone: '01233445566',
-      deliveryAddress: 'حي المصالح، قنا',
-      zoneName: 'حي المصالح',
-      status: 'delivered',
-      timeAgo: 'منذ ساعة',
-      itemsTotal: 260.0,
-      deliveryFee: 12.0,
-      grandTotal: 272.0,
-      items: [{ name: 'وجبة كباب وكفتة مشوي على الفحم', quantity: 2, price: 130.0 }],
-    },
-  ];
+  orders: BranchOrder[] = [];
+
+  ngOnInit(): void {
+    this.loadDashboard();
+  }
+
+  loadDashboard(): void {
+    this.loading = true;
+    this.loadError = '';
+    this.api.getBranchDashboard().subscribe({
+      next: (data) => {
+        this.currentBranch = {
+          id: data.branch.id,
+          name: data.branch.name,
+          storeName: data.branch.store_name,
+          is_accepting_orders: data.branch.is_accepting_orders,
+          working_hours: {
+            open: data.branch.working_hours?.from ?? data.branch.working_hours?.open ?? '',
+            close: data.branch.working_hours?.to ?? data.branch.working_hours?.close ?? '',
+          },
+        };
+        if (data.play_audio_alert && this.soundEnabled()) {
+          this.playChime();
+        }
+        this.loadOrders(data.branch.name, data.branch.store_name);
+      },
+      error: (err: { message?: string }) => {
+        this.loadError = err?.message || 'تعذر تحميل بيانات الفرع. حاول مرة تانية';
+        this.loading = false;
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  private loadOrders(branchName: string, storeName: string): void {
+    this.api.getBranchOrders().subscribe({
+      next: (data) => {
+        this.orders = data.orders.map((o) => this.toBranchOrder(o, branchName, storeName));
+        this.loading = false;
+        if (data.play_audio_alert && this.soundEnabled()) {
+          this.playChime();
+        }
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.loadError = err?.message || 'تعذر تحميل طلبات الفرع. حاول مرة تانية';
+        this.loading = false;
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  private toBranchOrder(o: ApiOrder, branchName: string, storeName: string): BranchOrder {
+    return {
+      id: o.id,
+      orderNumber: o.order_number,
+      branchId: o.branch_id ?? this.currentBranch.id,
+      branchName,
+      storeName,
+      customerName: o.customer_name,
+      customerPhone: o.customer_phone,
+      deliveryAddress:
+        o.delivery_latitude != null && o.delivery_longitude != null
+          ? `${o.delivery_latitude}, ${o.delivery_longitude}`
+          : '',
+      zoneName: o.zone?.name ?? '',
+      notes: o.customer_notes ?? undefined,
+      status: o.status as BranchOrder['status'],
+      timeAgo: this.formatTimeAgo(o.created_at),
+      itemsTotal: parseFloat(o.items_total),
+      deliveryFee: parseFloat(o.delivery_fee),
+      grandTotal: parseFloat(o.grand_total),
+      items: (o.items ?? []).map((i) => ({
+        name: i.product_name,
+        quantity: i.quantity,
+        price: parseFloat(i.unit_price),
+      })),
+    };
+  }
+
+  private formatTimeAgo(iso: string): string {
+    const then = new Date(iso).getTime();
+    if (Number.isNaN(then)) return '';
+    const minutes = Math.max(0, Math.round((Date.now() - then) / 60000));
+    if (minutes < 1) return 'الآن';
+    if (minutes < 60) return `منذ ${minutes} دقيقة`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `منذ ${hours} ساعة`;
+    return `منذ ${Math.floor(hours / 24)} يوم`;
+  }
 
   newOrdersCount() {
     return this.orders.filter((o) => o.status === 'new').length;
@@ -762,7 +817,7 @@ export class BranchDashboardComponent {
 
   getStatusLabel(status: string): string {
     const map: Record<string, string> = {
-      new: 'طلب جديد للفرع 🔔',
+      new: 'طلب جديد للفرع ',
       accepted: 'تم القبول بالفرع',
       preparing: 'جاري التحضير بمطبخ الفرع',
       out_for_delivery: 'خرج للتوصيل مع مندوب المتجر',
@@ -774,7 +829,19 @@ export class BranchDashboardComponent {
   }
 
   toggleReceiving() {
-    this.currentBranch.is_accepting_orders = !this.currentBranch.is_accepting_orders;
+    const next = !this.currentBranch.is_accepting_orders;
+    this.currentBranch.is_accepting_orders = next;
+    this.api.toggleBranchStatus(next).subscribe({
+      next: (data) => {
+        this.currentBranch.is_accepting_orders = data.is_accepting_orders;
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.currentBranch.is_accepting_orders = !next;
+        this.actionError = err?.message || 'تعذر تحديث حالة الفرع';
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   toggleSound() {
@@ -809,7 +876,17 @@ export class BranchDashboardComponent {
       alert(this.t.branch.orderNotYourBranch);
       return;
     }
-    order.status = nextStatus;
+    this.actionError = '';
+    this.api.updateBranchOrderStatus(order.id, nextStatus).subscribe({
+      next: () => {
+        order.status = nextStatus;
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.actionError = err?.message || 'تعذر تحديث حالة الطلب';
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   openRejectModal(order: BranchOrder) {
@@ -822,9 +899,19 @@ export class BranchDashboardComponent {
 
   confirmOrderRejection() {
     const ord = this.selectedOrderForRejection();
-    if (ord) {
-      ord.status = 'rejected';
-      this.selectedOrderForRejection.set(null);
-    }
+    if (!ord) return;
+    this.actionError = '';
+    this.api.updateBranchOrderStatus(ord.id, 'rejected', this.rejectionReason).subscribe({
+      next: () => {
+        ord.status = 'rejected';
+        this.selectedOrderForRejection.set(null);
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.actionError = err?.message || 'تعذر رفض الطلب';
+        this.selectedOrderForRejection.set(null);
+        this.cdr.markForCheck();
+      },
+    });
   }
 }

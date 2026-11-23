@@ -13,10 +13,16 @@ class Zone extends Model
     protected $fillable = [
         'name',
         'is_active',
+        'center_lat',
+        'center_lng',
+        'radius_km',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'center_lat' => 'float',
+        'center_lng' => 'float',
+        'radius_km' => 'float',
     ];
 
     public function branchFees(): HasMany

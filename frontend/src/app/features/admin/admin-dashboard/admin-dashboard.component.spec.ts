@@ -1,131 +1,180 @@
 import { TestBed } from '@angular/core/testing';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { of } from 'rxjs';
 import { AdminDashboardComponent } from './admin-dashboard.component';
+import { ApiService } from '../../../core/services/api.service';
 
-describe('AdminDashboardComponent - Branch Managers', () => {
+const storesResponse = [
+  {
+    id: 1, name: 'مطعم الكرنك (تجريبي)', type: 'restaurant', is_active: true,
+    users: [{ name: 'أحمد محمود', phone: '01012345678' }],
+    branches: [{ id: 1, name: 'فرع وسط البلد' }, { id: 2, name: 'فرع المعنا' }],
+  },
+  {
+    id: 2, name: 'بقالة الأمانة (تجريبي)', type: 'grocery', is_active: false,
+    users: [{ name: 'إبراهيم علي', phone: '01123456789' }],
+    branches: [{ id: 3, name: 'فرع سيدي عبد الرحيم' }],
+  },
+];
+
+const ordersResponse = {
+  orders: [
+    {
+      id: 101, order_number: 'ORD-QNA-001', status: 'new',
+      customer_name: 'محمود حسن', customer_phone: '01098765432', grand_total: '175.00',
+      created_at: new Date(Date.now() - 14 * 60000).toISOString(),
+      store: { id: 1, name: 'مطعم الكرنك (تجريبي)' },
+    },
+    {
+      id: 102, order_number: 'ORD-QNA-002', status: 'preparing',
+      customer_name: 'سارة مصطفى', customer_phone: '01144556677', grand_total: '95.50',
+      created_at: new Date(Date.now() - 5 * 60000).toISOString(),
+      store: { id: 2, name: 'بقالة الأمانة (تجريبي)' },
+    },
+  ],
+};
+
+const customersResponse = [
+  { id: 1, name: 'محمود حسن', phone: '01098765432', email: 'mahmoud@example.com', status: 'active' },
+  { id: 2, name: 'مستخدم محظور (تجريبي)', phone: '01511223344', email: 'suspended@example.com', status: 'suspended' },
+];
+
+const managersResponse = [
+  {
+    id: 1, name: 'يوسف محمود', phone: '01011223344', email: 'youssef@karank.com', status: 'active',
+    managed_branches: [{ id: 1, name: 'فرع وسط البلد', store: { name: 'مطعم الكرنك' } }],
+  },
+];
+
+const settingsResponse = {
+  subscription_contact_number: '+201055370118',
+  unaccepted_order_alert_minutes: 10,
+  order_rate_limit_per_minute: 5,
+};
+
+const analyticsResponse = {
+  period: 'all',
+  users: { total_customers: 142, active_customers_in_period: 68, total_merchants: 12, total_branch_managers: 18 },
+  orders: { total_orders: 310, by_status: { delivered: 235 }, unaccepted_delayed_count: 2 },
+  cash_summary: { delivered_cash_total_egp: 41250.0, currency: 'EGP' },
+  locations_aggregated: [{ zone: 'وسط البلد', count: 120 }],
+  stores_activity: [{ store_name: 'مطعم الكرنك الأصيل', orders_count: 145 }],
+};
+
+describe('AdminDashboardComponent', () => {
   let component: AdminDashboardComponent;
+  let api: any;
 
   beforeEach(async () => {
+    api = {
+      getAdminStores: vi.fn().mockReturnValue(of(storesResponse)),
+      getAdminOrders: vi.fn().mockReturnValue(of(ordersResponse)),
+      getAdminCustomers: vi.fn().mockReturnValue(of(customersResponse)),
+      getAdminBranchManagers: vi.fn().mockReturnValue(of(managersResponse)),
+      getAdminSettings: vi.fn().mockReturnValue(of(settingsResponse)),
+      getAdminAnalytics: vi.fn().mockReturnValue(of(analyticsResponse)),
+      getAdminAiSettings: vi.fn().mockReturnValue(of({ kill_switch_active: false })),
+      getAdminAiStoresQuota: vi.fn().mockReturnValue(of([{ id: 1, name: 'مطعم الكرنك', is_frozen: false }])),
+      getAdminAiUsageLogs: vi.fn().mockReturnValue(of([])),
+      toggleAdminStoreStatus: vi.fn().mockReturnValue(of({})),
+      toggleAdminCustomerStatus: vi.fn().mockReturnValue(of({})),
+      overrideAdminOrderStatus: vi.fn().mockReturnValue(of({})),
+      createAdminBranchManager: vi.fn().mockReturnValue(of({ id: 77 })),
+      toggleAdminBranchManagerStatus: vi.fn().mockReturnValue(of({})),
+      saveAdminSettings: vi.fn().mockReturnValue(of({})),
+      toggleAdminAiKillSwitch: vi.fn().mockReturnValue(of({})),
+      toggleAdminStoreFreeze: vi.fn().mockReturnValue(of({})),
+      saveAdminAiSettings: vi.fn().mockReturnValue(of({})),
+      testAdminAiConnection: vi.fn().mockReturnValue(of({})),
+      analyzeAdminPlatform: vi.fn().mockReturnValue(of({ analysis: 'تحليل', hypotheses: [] })),
+    };
+
     await TestBed.configureTestingModule({
       imports: [AdminDashboardComponent],
+      providers: [{ provide: ApiService, useValue: api }],
     }).compileComponents();
 
     const fixture = TestBed.createComponent(AdminDashboardComponent);
     component = fixture.componentInstance;
+    fixture.detectChanges();
   });
 
-  it('should initialize with available branches and branch managers', () => {
-    expect(component.availableBranches.length).toBeGreaterThanOrEqual(2);
-    expect(component.branchManagers.length).toBeGreaterThanOrEqual(1);
+  it('loads stores, orders, customers, managers, settings and analytics from the API', () => {
+    expect(component).toBeTruthy();
+    expect(component.stores.length).toBe(2);
+    expect(component.orders.length).toBe(2);
+    expect(component.customers.length).toBe(2);
+    expect(component.branchManagers.length).toBe(1);
+    expect(component.settings.subscription_contact_number).toBe('+201055370118');
+    expect(component.analyticsData.users.total_customers).toBe(142);
+    expect(component.loading).toBe(false);
   });
 
-  it('should switch to branch_managers tab', () => {
-    component.activeTab.set('branch_managers');
-    expect(component.activeTab()).toBe('branch_managers');
+  it('builds available branches from the real stores data', () => {
+    expect(component.availableBranches.length).toBe(3);
+    expect(component.availableBranches[0].storeName).toContain('الكرنك');
   });
 
-  it('should require branch selection when creating branch manager', () => {
-    component.openBranchManagerModal();
-    component.newManager = {
-      name: 'سامي عبد الله',
-      email: 'sami@example.com',
-      phone: '01012345678',
-      branchId: '', // missing branch
-    };
+  it('flags delayed unaccepted orders based on the configured threshold', () => {
+    expect(component.unacceptedAlertCount()).toBe(1);
+  });
 
+  it('toggles store status through the API with a mandatory reason', () => {
+    const promptMock = vi.spyOn(window, 'prompt').mockReturnValue('مخالفة شروط المنصة');
+    const store = component.stores[0];
+    component.toggleStoreStatus(store);
+    expect(api.toggleAdminStoreStatus).toHaveBeenCalledWith(1, false, 'مخالفة شروط المنصة');
+    expect(store.active).toBe(false);
+    promptMock.mockRestore();
+  });
+
+  it('does not call the API when the reason prompt is cancelled', () => {
+    const promptMock = vi.spyOn(window, 'prompt').mockReturnValue(null);
+    component.toggleStoreStatus(component.stores[0]);
+    expect(api.toggleAdminStoreStatus).not.toHaveBeenCalled();
+    component.toggleCustomerStatus(component.customers[0]);
+    expect(api.toggleAdminCustomerStatus).not.toHaveBeenCalled();
+    promptMock.mockRestore();
+  });
+
+  it('overrides order status through the API with reason', () => {
+    const order = component.orders[0];
+    component.openStatusOverrideModal(order);
+    component.overrideNewStatus = 'cancelled';
+    component.overrideReason = 'طلب مكرر من العميل';
+    component.confirmStatusOverride();
+    expect(api.overrideAdminOrderStatus).toHaveBeenCalledWith(101, 'cancelled', 'طلب مكرر من العميل');
+    expect(order.status).toBe('cancelled');
+  });
+
+  it('rejects duplicate email or phone for branch managers locally', () => {
+    component.newManager = { name: 'مسؤول جديد', email: 'youssef@karank.com', phone: '01011223344', branchId: '1' };
     component.createBranchManager();
-    expect(component.managerCreationError).toBe('اختار فرعًا');
+    expect(component.managerCreationError).toBeTruthy();
+    expect(api.createAdminBranchManager).not.toHaveBeenCalled();
   });
 
-  it('should reject duplicate email or phone for branch managers', () => {
-    const existing = component.branchManagers[0];
-    component.openBranchManagerModal();
-    component.newManager = {
-      name: 'مستخدم مكرر',
-      email: existing.email,
-      phone: '01099887766',
-      branchId: '1',
-    };
-
+  it('creates and links a new branch manager through the API', () => {
+    component.newManager = { name: 'مسؤول فرع المعنا', email: 'maana@karank.com', phone: '01055566677', branchId: '2' };
     component.createBranchManager();
-    expect(component.managerCreationError).toBe('الحساب ده موجود قبل كده');
+    expect(api.createAdminBranchManager).toHaveBeenCalledWith({
+      name: 'مسؤول فرع المعنا', email: 'maana@karank.com', phone: '01055566677', branch_id: 2,
+    });
+    const created = component.branchManagers.find((b) => b.email === 'maana@karank.com');
+    expect(created).toBeTruthy();
+    expect(created.branchName).toBe('فرع المعنا');
   });
 
-  it('should successfully create and link new branch manager', () => {
-    const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
-    const initialCount = component.branchManagers.length;
-
-    component.openBranchManagerModal();
-    component.newManager = {
-      name: 'أحمد القنائي',
-      email: 'ahmed.qena@example.com',
-      phone: '01055566677',
-      branchId: '2', // فرع المعنا
-    };
-
-    component.createBranchManager();
-    expect(component.branchManagers.length).toBe(initialCount + 1);
-    const added = component.branchManagers[component.branchManagers.length - 1];
-    expect(added.name).toBe('أحمد القنائي');
-    expect(added.branchId).toBe(2);
-    expect(added.branchName).toBe('فرع المعنا');
-    expect(component.showNewBranchManagerModal()).toBe(false);
-
-    alertMock.mockRestore();
+  it('reloads analytics when the period changes', () => {
+    api.getAdminAnalytics.mockClear();
+    component.setAnalyticsPeriod('week');
+    expect(api.getAdminAnalytics).toHaveBeenCalledWith('week');
+    expect(component.analyticsPeriod).toBe('week');
   });
 
-  describe('Admin Analytics & AI Controls', () => {
-    it('should switch to analytics tab and display SQL-backed metrics', () => {
-      component.activeTab.set('analytics');
-      expect(component.activeTab()).toBe('analytics');
-      expect(component.analyticsPeriod).toBe('all');
-      expect(component.analyticsData.orders.total_orders).toBeGreaterThan(0);
-      expect(component.analyticsData.users.total_customers).toBeGreaterThan(0);
-      expect(component.analyticsData.cash_summary.delivered_cash_total_egp).toBeDefined();
-    });
-
-    it('should switch to ai settings tab and display provider configurations', () => {
-      component.activeTab.set('ai');
-      expect(component.activeTab()).toBe('ai');
-      expect(component.aiSettings.text_analysis.provider_name).toBe('mock');
-      expect(component.aiSettings.image_ocr_menu.provider_name).toBe('mock');
-      expect(component.aiSettings.image_generation.provider_name).toBe('mock');
-      expect(component.aiKillSwitchActive).toBe(false);
-    });
-
-    it('should toggle emergency kill switch to stop all AI services', () => {
-      const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
-      expect(component.aiKillSwitchActive).toBe(false);
-
-      component.toggleKillSwitch();
-      expect(component.aiKillSwitchActive).toBe(true);
-
-      component.toggleKillSwitch();
-      expect(component.aiKillSwitchActive).toBe(false);
-      alertMock.mockRestore();
-    });
-
-    it('should toggle store AI freeze', () => {
-      const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
-      const store = component.stores[0];
-      const initialFreeze = store.is_frozen;
-
-      component.toggleStoreFreeze(store);
-      expect(store.is_frozen).toBe(!initialFreeze);
-
-      alertMock.mockRestore();
-    });
-
-    it('should preview AI analysis payload ensuring zero customer PII before execution', () => {
-      component.openAiAnalyzePreviewModal();
-      expect(component.showAiAnalyzePreviewModal()).toBe(true);
-
-      const payloadStr = component.aiPayloadPreviewJson();
-      // Ensure zero PII: no customer phone numbers or customer personal names
-      expect(payloadStr).not.toContain('010');
-      expect(payloadStr).not.toContain('محمود');
-      expect(payloadStr).not.toContain('إبراهيم');
-      expect(payloadStr).toContain('total_orders');
-    });
+  it('toggles the AI kill switch through the API', () => {
+    component.toggleKillSwitch();
+    expect(api.toggleAdminAiKillSwitch).toHaveBeenCalledWith(true);
+    expect(component.aiKillSwitchActive).toBe(true);
   });
 });

@@ -9,9 +9,34 @@
 
       <div class="header-nav">
         <a routerLink="/customer/stores" routerLinkActive="active" class="nav-item">المتاجر</a>
-        <a routerLink="/store/dashboard" routerLinkActive="active" class="nav-item">لوحة المتجر</a>
-        <a routerLink="/admin/dashboard" routerLinkActive="active" class="nav-item">الأدمن</a>
+
+        @if (showMerchantLink()) {
+          <a routerLink="/store/dashboard" routerLinkActive="active" class="nav-item">لوحة المتجر</a>
+        }
+        @if (showBranchLink()) {
+          <a routerLink="/branch/dashboard" routerLinkActive="active" class="nav-item">لوحة الفرع</a>
+        }
+        @if (showAdminLink()) {
+          <a routerLink="/admin/dashboard" routerLinkActive="active" class="nav-item">الأدمن</a>
+        }
+
         <a routerLink="/auth/merchant-info" class="btn btn-secondary">اشترك كتاجر</a>
+
+        @if (auth.isLoggedIn()) {
+          <span class="user-chip">
+            <app-icon name="user" [size]="16" />
+            <span class="user-name">{{ displayName() }}</span>
+          </span>
+          <button type="button" class="btn btn-ghost" (click)="logout()">
+            <app-icon name="log-out" [size]="16" />
+            خروج
+          </button>
+        } @else {
+          <a routerLink="/auth/login" class="btn btn-accent btn-login">
+            <app-icon name="log-in" [size]="16" />
+            دخول
+          </a>
+        }
       </div>
     </div>
   </header>

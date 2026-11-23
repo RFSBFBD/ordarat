@@ -2,25 +2,28 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AR_TRANSLATIONS } from '../../../core/constants/translations';
+import { IconComponent } from '../../../shared/components/icon/icon.component';
 
 @Component({
   selector: 'app-merchant-info',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent],
   template: `
     <div class="merchant-info-container">
       <div class="card">
-        <div class="icon">🏪</div>
+        <div class="icon"><app-icon name="store" [size]="44"></app-icon></div>
         <h2>{{ t.customer.merchantInquiry.title }}</h2>
 
         <div *ngIf="subscriptionNumber; else pendingBlock" class="contact-box">
           <div class="phone-display">{{ subscriptionNumber }}</div>
           <div class="actions">
             <a [href]="'tel:' + subscriptionNumber" class="btn btn-call">
-              📞 {{ t.customer.merchantInquiry.callBtn }}
+              <app-icon name="phone" [size]="18"></app-icon>
+              {{ t.customer.merchantInquiry.callBtn }}
             </a>
             <a [href]="'https://wa.me/' + whatsappNumber" target="_blank" class="btn btn-whatsapp">
-              💬 {{ t.customer.merchantInquiry.whatsappBtn }}
+              <app-icon name="phone" [size]="18"></app-icon>
+              {{ t.customer.merchantInquiry.whatsappBtn }}
             </a>
           </div>
         </div>

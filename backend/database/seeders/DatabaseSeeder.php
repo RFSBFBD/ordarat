@@ -20,6 +20,19 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        // This seeder creates DEMO data only: demo users with a known password,
+        // sample stores, products, zones and orders. It must never run in a
+        // production deployment unless explicitly requested for a controlled
+        // demo environment.
+        if (app()->environment('production') && ! filter_var(env('SEED_DEMO_DATA', false), FILTER_VALIDATE_BOOLEAN)) {
+            $this->command?->warn('Demo seeder skipped in production. Set SEED_DEMO_DATA=true only for a disposable demo environment.');
+            return;
+        }
+
+        // The demo password can be overridden with SEED_DEMO_PASSWORD; the
+        // fallback is only reachable outside production (see the guard above).
+        $demoPassword = env('SEED_DEMO_PASSWORD', 'password123');
+
         // 1. Users
         $admin = User::create([
             'name' => 'أدمن أوردرات (تجريبي)',
@@ -27,7 +40,7 @@ class DatabaseSeeder extends Seeder
             'phone' => '01000000001',
             'role' => 'admin',
             'status' => 'active',
-            'password' => Hash::make('password123'),
+            'password' => Hash::make($demoPassword),
         ]);
 
         $merchantA = User::create([
@@ -36,7 +49,7 @@ class DatabaseSeeder extends Seeder
             'phone' => '01011111111',
             'role' => 'merchant',
             'status' => 'active',
-            'password' => Hash::make('password123'),
+            'password' => Hash::make($demoPassword),
         ]);
 
         $merchantB = User::create([
@@ -45,7 +58,7 @@ class DatabaseSeeder extends Seeder
             'phone' => '01022222222',
             'role' => 'merchant',
             'status' => 'active',
-            'password' => Hash::make('password123'),
+            'password' => Hash::make($demoPassword),
         ]);
 
         $customerA = User::create([
@@ -54,7 +67,7 @@ class DatabaseSeeder extends Seeder
             'phone' => '01033333333',
             'role' => 'customer',
             'status' => 'active',
-            'password' => Hash::make('password123'),
+            'password' => Hash::make($demoPassword),
         ]);
 
         $customerB = User::create([
@@ -63,7 +76,16 @@ class DatabaseSeeder extends Seeder
             'phone' => '01044444444',
             'role' => 'customer',
             'status' => 'active',
-            'password' => Hash::make('password123'),
+            'password' => Hash::make($demoPassword),
+        ]);
+
+        $branchManager = User::create([
+            'name' => 'مدير فرع وسط البلد (تجريبي)',
+            'email' => 'branch.manager@ordarat-qena.local',
+            'phone' => '01066666666',
+            'role' => 'branch_manager',
+            'status' => 'active',
+            'password' => Hash::make($demoPassword),
         ]);
 
         $suspendedCustomer = User::create([
@@ -72,7 +94,7 @@ class DatabaseSeeder extends Seeder
             'phone' => '01055555555',
             'role' => 'customer',
             'status' => 'suspended',
-            'password' => Hash::make('password123'),
+            'password' => Hash::make($demoPassword),
         ]);
 
         // 2. Stores & Branches
@@ -120,6 +142,9 @@ class DatabaseSeeder extends Seeder
             'is_active' => true,
         ]);
 
+        // Link the demo branch manager to the restaurant's downtown branch
+        $branchManager->managedBranches()->attach($branchA->id);
+
         // 3. Categories & Products
         $catFood = Category::create([
             'store_id' => $restaurant->id,
@@ -145,10 +170,25 @@ class DatabaseSeeder extends Seeder
             'is_available' => false,
         ]);
 
-        // 4. Qena Zones (clearly marked as test)
-        $zone1 = Zone::create(['name' => 'منطقة وسط البلد - قنا (تجريبي)']);
-        $zone2 = Zone::create(['name' => 'منطقة الجامعة - قنا (تجريبي)']);
-        $zone3 = Zone::create(['name' => 'منطقة الشؤون - قنا (تجريبي)']);
+        // 4. Qena Zones with geographic coverage (clearly marked as test)
+        $zone1 = Zone::create([
+            'name' => 'منطقة وسط البلد - قنا (تجريبي)',
+            'center_lat' => 26.1642,
+            'center_lng' => 32.7181,
+            'radius_km' => 2.0,
+        ]);
+        $zone2 = Zone::create([
+            'name' => 'منطقة الجامعة - قنا (تجريبي)',
+            'center_lat' => 26.1890,
+            'center_lng' => 32.7260,
+            'radius_km' => 2.5,
+        ]);
+        $zone3 = Zone::create([
+            'name' => 'منطقة الشؤون - قنا (تجريبي)',
+            'center_lat' => 26.1620,
+            'center_lng' => 32.7210,
+            'radius_km' => 1.5,
+        ]);
 
         BranchZoneFee::create([
             'branch_id' => $branchA->id,

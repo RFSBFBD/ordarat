@@ -48,6 +48,7 @@ export const AR_TRANSLATIONS = {
       opensAt: 'يفتح الساعة {time}',
       emptyRestaurants: 'مفيش مطاعم متاحة دلوقتي',
       emptyGroceries: 'مفيش محلات بقالة متاحة دلوقتي',
+      loading: 'بنحمّل المتاجر...',
     },
     storePage: {
       currency: 'جنيه',
@@ -56,6 +57,8 @@ export const AR_TRANSLATIONS = {
       fullMenuBtn: 'المنيو كامل',
       cardsViewBtn: 'عرض الكروت',
       emptyProducts: 'النشاط ده لسه ما ضافش منتجات',
+      loading: 'بنحمّل المنيو...',
+      addError: 'منتج واحد أو أكثر مش متاح دلوقتي',
     },
     productDetails: {
       quantityMinError: 'الكمية لازم تكون ١ أو أكتر',

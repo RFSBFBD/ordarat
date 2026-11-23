@@ -1,7 +1,8 @@
-import { Component, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AR_TRANSLATIONS } from '../../../core/constants/translations';
+import { ApiService } from '../../../core/services/api.service';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -9,6 +10,14 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
   imports: [CommonModule, FormsModule],
   template: `
     <div class="admin-dashboard">
+      <div class="preview-banner" role="note" *ngIf="loading">جاري تحميل بيانات المنصة...</div>
+      <div class="preview-banner" role="alert" *ngIf="!loading && loadError">
+        {{ loadError }}
+        <button class="tab-btn" (click)="loadAll()">إعادة المحاولة</button>
+      </div>
+      <div class="preview-banner" role="alert" *ngIf="actionError">{{ actionError }}</div>
+      <div class="preview-banner" role="status" *ngIf="actionSuccess">{{ actionSuccess }}</div>
+
       <div class="admin-header">
         <div>
           <h2 class="title">لوحة تحكم إدارة منصة أوردرات</h2>
@@ -62,16 +71,16 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
           [class.active]="activeTab() === 'analytics'"
           (click)="activeTab.set('analytics')"
         >
-          📊 {{ t.admin.analytics.tabTitle }}
+          {{ t.admin.analytics.tabTitle }}
         </button>
         <button class="tab-btn" [class.active]="activeTab() === 'ai'" (click)="activeTab.set('ai')">
-          🤖 {{ t.admin.ai.tabTitle }}
+          {{ t.admin.ai.tabTitle }}
         </button>
       </div>
 
       <!-- Approved Decision Notice -->
       <div class="approved-decision-box">
-        ✅ <strong>قرار معتمد:</strong> تسعير رسوم التوصيل بمناطق قنا مسند بالكامل لأصحاب المطاعم
+        <strong>قرار معتمد:</strong> تسعير رسوم التوصيل بمناطق قنا مسند بالكامل لأصحاب المطاعم
         والبقالات لكل فرع، ورقم التواصل المعتمد للاشتراك هو: <strong>+201055370118</strong>
       </div>
 
@@ -187,7 +196,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                   <span class="status-tag" [ngClass]="'status-' + ord.status">{{
                     getStatusLabel(ord.status)
                   }}</span>
-                  <span *ngIf="ord.isDelayed" class="tag-delayed">تأخر في القبول ⚠️</span>
+                  <span *ngIf="ord.isDelayed" class="tag-delayed">تأخر في القبول </span>
                 </td>
                 <td>{{ ord.minutesAgo }} دقيقة</td>
                 <td>
@@ -285,7 +294,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                 <td dir="ltr">{{ bm.phone }}</td>
                 <td>{{ bm.email }}</td>
                 <td>
-                  <span class="branch-pill">📍 {{ bm.branchName }}</span>
+                  <span class="branch-pill">{{ bm.branchName }}</span>
                 </td>
                 <td>{{ bm.storeName }}</td>
                 <td>
@@ -363,7 +372,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
           </div>
 
           <div class="decision-gate-card approved">
-            <h4>✅ القرار المعتمد: تسعير التوصيل بواسطة صاحب المتجر</h4>
+            <h4>القرار المعتمد: تسعير التوصيل بواسطة صاحب المتجر</h4>
             <p>
               بناءً على القرار المعتمد من صاحب المشروع: يقوم كل صاحب مطعم أو بقالة بتحديد قيمة
               التوصيل الخاصة بفروعه لكل منطقة في قنا، مع إمكانية استبعاد أي منطقة لا يغطيها مندوبوه.
@@ -381,7 +390,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
       <div class="card-section" *ngIf="activeTab() === 'analytics'">
         <div class="section-title-row">
           <div>
-            <h3>📊 {{ t.admin.analytics.title }}</h3>
+            <h3>{{ t.admin.analytics.title }}</h3>
             <p class="subtitle">
               بيانات دقيقة مستخرجة مباشرة من استعلامات قاعدة البيانات بتوقيت قنا (Africa/Cairo)
             </p>
@@ -423,7 +432,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
 
         <!-- Delivered Cash Banner (Accurate COD Label) -->
         <div class="cash-stat-banner">
-          <div class="cash-icon">💵</div>
+          <div class="cash-icon"></div>
           <div>
             <span class="cash-title">{{ t.admin.analytics.deliveredCashLabel }}</span>
             <span class="cash-value"
@@ -433,13 +442,13 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
               جنيه</span
             >
             <small class="cash-note"
-              >⚠️ كاش محصل عند الاستلام بواسطة مندوبي المتاجر — لا تمثل أرباح المنصة</small
+              >كاش محصل عند الاستلام بواسطة مندوبي المتاجر — لا تمثل أرباح المنصة</small
             >
           </div>
         </div>
 
         <!-- Users KPIs -->
-        <h4 class="sub-heading">👥 {{ t.admin.analytics.usersTitle }}</h4>
+        <h4 class="sub-heading">{{ t.admin.analytics.usersTitle }}</h4>
         <div class="kpi-grid">
           <div class="kpi-card">
             <span class="kpi-val">{{ analyticsData.users.total_customers }}</span>
@@ -464,7 +473,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         </div>
 
         <!-- Orders by Status -->
-        <h4 class="sub-heading">📦 {{ t.admin.analytics.ordersTitle }}</h4>
+        <h4 class="sub-heading">{{ t.admin.analytics.ordersTitle }}</h4>
         <div class="status-summary-grid">
           <div class="status-box new">
             <span>جديدة</span><strong>{{ analyticsData.orders.by_status.new }}</strong>
@@ -494,7 +503,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         <!-- Locations Breakdown & Privacy Policy -->
         <div class="breakdown-two-cols">
           <div class="breakdown-card">
-            <h4 class="sub-heading">📍 {{ t.admin.analytics.zonesTitle }}</h4>
+            <h4 class="sub-heading">{{ t.admin.analytics.zonesTitle }}</h4>
             <div class="table-responsive">
               <table class="data-table">
                 <thead>
@@ -515,11 +524,11 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                 </tbody>
               </table>
             </div>
-            <p class="privacy-note">🔒 {{ t.admin.analytics.zonesPrivacyNote }}</p>
+            <p class="privacy-note">{{ t.admin.analytics.zonesPrivacyNote }}</p>
           </div>
 
           <div class="breakdown-card">
-            <h4 class="sub-heading">🏬 {{ t.admin.analytics.storesTitle }}</h4>
+            <h4 class="sub-heading">{{ t.admin.analytics.storesTitle }}</h4>
             <div class="table-responsive">
               <table class="data-table">
                 <thead>
@@ -546,14 +555,14 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
       <div class="card-section" *ngIf="activeTab() === 'ai'">
         <div class="section-title-row">
           <div>
-            <h3>🤖 {{ t.admin.ai.title }}</h3>
+            <h3>{{ t.admin.ai.title }}</h3>
             <p class="subtitle">
               إدارة مفاتيح ومزودي الذكاء الاصطناعي، ضبط سقوف التكلفة، وإجراء التحليل الكلي
             </p>
           </div>
           <div class="ai-top-actions">
             <button class="btn btn-warning" (click)="openAiAnalyzePreviewModal()">
-              ✨ {{ t.admin.ai.analyzeBtn }}
+              {{ t.admin.ai.analyzeBtn }}
             </button>
             <button
               class="btn"
@@ -564,7 +573,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
               {{
                 aiKillSwitchActive
                   ? 'إلغاء الإيقاف الطارئ للـ AI'
-                  : '🚨 تفعيل الإيقاف الطارئ (Kill Switch)'
+                  : 'تفعيل الإيقاف الطارئ (Kill Switch)'
               }}
             </button>
           </div>
@@ -572,7 +581,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
 
         <!-- Emergency Kill Switch Alert if active -->
         <div class="alert-box-danger" *ngIf="aiKillSwitchActive">
-          🛑 <strong>تنبيه طوارئ:</strong> تم تفعيل الإيقاف الطارئ لخدمات الذكاء الاصطناعي. جميع
+          <strong>تنبيه طوارئ:</strong> تم تفعيل الإيقاف الطارئ لخدمات الذكاء الاصطناعي. جميع
           طلبات التجار والنظام متوقفة ومحظورة فوراً.
         </div>
 
@@ -627,10 +636,10 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
             </div>
             <div class="card-footer-actions">
               <button class="btn btn-sm btn-outline" (click)="testAiConnection('text_analysis')">
-                🔌 {{ t.admin.ai.testConnectionBtn }}
+                {{ t.admin.ai.testConnectionBtn }}
               </button>
               <button class="btn btn-sm btn-primary" (click)="saveAiSettings('text_analysis')">
-                💾 حفظ الإعدادات
+                حفظ الإعدادات
               </button>
             </div>
           </div>
@@ -683,10 +692,10 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
             </div>
             <div class="card-footer-actions">
               <button class="btn btn-sm btn-outline" (click)="testAiConnection('image_ocr_menu')">
-                🔌 {{ t.admin.ai.testConnectionBtn }}
+                {{ t.admin.ai.testConnectionBtn }}
               </button>
               <button class="btn btn-sm btn-primary" (click)="saveAiSettings('image_ocr_menu')">
-                💾 حفظ الإعدادات
+                حفظ الإعدادات
               </button>
             </div>
           </div>
@@ -738,10 +747,10 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
             </div>
             <div class="card-footer-actions">
               <button class="btn btn-sm btn-outline" (click)="testAiConnection('image_generation')">
-                🔌 {{ t.admin.ai.testConnectionBtn }}
+                {{ t.admin.ai.testConnectionBtn }}
               </button>
               <button class="btn btn-sm btn-primary" (click)="saveAiSettings('image_generation')">
-                💾 حفظ الإعدادات
+                حفظ الإعدادات
               </button>
             </div>
           </div>
@@ -749,7 +758,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
 
         <!-- Store AI Quota & Freeze Controls -->
         <h4 class="sub-heading" style="margin-top: 2rem;">
-          🏬 التحكم في تفعيل وتجميد الـ AI للمتاجر
+          التحكم في تفعيل وتجميد الـ AI للمتاجر
         </h4>
         <div class="table-responsive">
           <table class="data-table">
@@ -791,7 +800,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
 
         <!-- Usage Logs Table -->
         <h4 class="sub-heading" style="margin-top: 2rem;">
-          📜 {{ t.admin.ai.usageLogsTitle }} (بدون بيانات شخصية)
+          {{ t.admin.ai.usageLogsTitle }} (بدون بيانات شخصية)
         </h4>
         <div class="table-responsive">
           <table class="data-table">
@@ -918,7 +927,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
           </div>
 
           <div *ngIf="managerCreationError" class="error-msg-box">
-            ⚠️ {{ managerCreationError }}
+            {{ managerCreationError }}
           </div>
 
           <div class="modal-actions">
@@ -933,7 +942,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
       <!-- MODAL: AI ANALYSIS PREVIEW (Transparency & Privacy confirmation) -->
       <div class="modal-backdrop" *ngIf="showAiAnalyzePreviewModal()">
         <div class="modal-dialog">
-          <h4>✨ {{ t.admin.ai.analyzePreviewTitle }}</h4>
+          <h4>{{ t.admin.ai.analyzePreviewTitle }}</h4>
           <p class="modal-desc">{{ t.admin.ai.analyzePreviewNotice }}</p>
 
           <div class="preview-payload-box">
@@ -941,7 +950,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
           </div>
 
           <div class="disclaimer-banner">
-            ⚠️ <strong>إقرار وتنبيه:</strong> سيتم إرسال الأرقام الإحصائية المجمعة فقط إلى المزود
+            <strong>إقرار وتنبيه:</strong> سيتم إرسال الأرقام الإحصائية المجمعة فقط إلى المزود
             (بدون أي محادثات أو بيانات شخصية)، وستظهر المخرجات كـ
             <em>«{{ t.admin.ai.analyzeDisclaimer }}»</em>.
           </div>
@@ -964,8 +973,8 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
       <!-- MODAL: AI ANALYSIS RESULTS -->
       <div class="modal-backdrop" *ngIf="showAiAnalyzeResultModal()">
         <div class="modal-dialog" style="max-width: 650px;">
-          <h4>📋 نتائج وتوصيات تحليل الذكاء الاصطناعي</h4>
-          <div class="disclaimer-pill">⚠️ {{ t.admin.ai.analyzeDisclaimer }}</div>
+          <h4>نتائج وتوصيات تحليل الذكاء الاصطناعي</h4>
+          <div class="disclaimer-pill">{{ t.admin.ai.analyzeDisclaimer }}</div>
 
           <div class="ai-result-content">
             <div class="insights-text">
@@ -991,6 +1000,18 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
   `,
   styles: [
     `
+      .preview-banner {
+        background: #fff8e6;
+        border: 1px dashed var(--color-accent);
+        color: #7a5b00;
+        border-radius: 8px;
+        padding: 0.6rem 1rem;
+        margin-bottom: 1rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-align: center;
+      }
+
       .admin-dashboard {
         max-width: 1200px;
         margin: 0 auto;
@@ -1488,8 +1509,11 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
     `,
   ],
 })
-export class AdminDashboardComponent {
+export class AdminDashboardComponent implements OnInit {
   protected readonly t = AR_TRANSLATIONS;
+
+  private readonly api = inject(ApiService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   activeTab = signal<
     'stores' | 'orders' | 'customers' | 'branch_managers' | 'settings' | 'analytics' | 'ai'
@@ -1499,6 +1523,11 @@ export class AdminDashboardComponent {
   showAiAnalyzePreviewModal = signal<boolean>(false);
   showAiAnalyzeResultModal = signal<boolean>(false);
   selectedOrderForOverride = signal<any | null>(null);
+
+  loading = true;
+  loadError = '';
+  actionError = '';
+  actionSuccess = '';
 
   orderStatusFilter = 'all';
   customerSearchQuery = '';
@@ -1512,238 +1541,212 @@ export class AdminDashboardComponent {
   aiResultText: string = '';
   aiResultHypothesesList: string[] = [];
 
-  analyticsData = {
+  analyticsData: any = {
     period: 'all',
     users: {
-      total_customers: 142,
-      active_customers_in_period: 68,
-      total_merchants: 12,
-      total_branch_managers: 18,
+      total_customers: 0,
+      active_customers_in_period: 0,
+      total_merchants: 0,
+      total_branch_managers: 0,
     },
     orders: {
-      total_orders: 310,
-      by_status: {
-        new: 6,
-        accepted: 14,
-        preparing: 22,
-        out_for_delivery: 18,
-        delivered: 235,
-        rejected: 8,
-        cancelled: 7,
-      },
-      unaccepted_delayed_count: 2,
+      total_orders: 0,
+      by_status: {},
+      unaccepted_delayed_count: 0,
     },
     cash_summary: {
-      delivered_cash_total_egp: 41250.0,
+      delivered_cash_total_egp: 0,
       currency: 'EGP',
       label: 'قيمة الطلبات المسلّمة (كاش عند الاستلام، غير محصّلة إلكترونيًا)',
     },
-    locations_aggregated: [
-      { zone: 'وسط البلد', count: 120 },
-      { zone: 'الجامعة ومساكن الشباب', count: 85 },
-      { zone: 'حي المصالح والشوؤن', count: 65 },
-      { zone: 'أخرى (مناطق متفرقة داخل قنا)', count: 40 },
-    ],
-    stores_activity: [
-      { store_name: 'مطعم الكرنك الأصيل', orders_count: 145 },
-      { store_name: 'بقالة الأمانة', orders_count: 95 },
-      { store_name: 'مطعم الشام', orders_count: 70 },
-    ],
+    locations_aggregated: [],
+    stores_activity: [],
   };
 
-  aiSettings = {
-    text_analysis: {
-      provider_name: 'mock',
-      api_key_input: '',
-      is_configured: true,
-      masked_key: '••••••••4321',
-      cost_limit_daily_usd: 10.0,
-      cost_limit_monthly_usd: 150.0,
-    },
-    image_ocr_menu: {
-      provider_name: 'mock',
-      api_key_input: '',
-      is_configured: true,
-      masked_key: '••••••••8899',
-      store_daily_quota: 15,
-      cost_limit_daily_usd: 20.0,
-    },
-    image_generation: {
-      provider_name: 'mock',
-      api_key_input: '',
-      is_configured: true,
-      masked_key: 'مدمج محلياً',
-      store_daily_quota: 20,
-      cost_limit_daily_usd: 15.0,
-    },
+  aiSettings: any = {
+    text_analysis: { provider_name: '', api_key_input: '', is_configured: false, masked_key: '', cost_limit_daily_usd: 0, cost_limit_monthly_usd: 0 },
+    image_ocr_menu: { provider_name: '', api_key_input: '', is_configured: false, masked_key: '', store_daily_quota: 0, cost_limit_daily_usd: 0 },
+    image_generation: { provider_name: '', api_key_input: '', is_configured: false, masked_key: '', store_daily_quota: 0, cost_limit_daily_usd: 0 },
   };
 
-  aiStores = [
-    { id: 1, name: 'مطعم الكرنك الأصيل', is_frozen: false, freeze_reason: '' },
-    { id: 2, name: 'بقالة الأمانة', is_frozen: false, freeze_reason: '' },
-    { id: 3, name: 'مطعم الشام', is_frozen: false, freeze_reason: '' },
-  ];
+  aiStores: any[] = [];
+  aiUsageLogs: any[] = [];
 
-  aiUsageLogs = [
-    {
-      function_type: 'image_ocr_menu',
-      provider_name: 'mock',
-      store_name: 'مطعم الكرنك',
-      output_size: 14,
-      estimated_cost_usd: 0.015,
-      status: 'success',
-      created_at: 'اليوم 16:30',
-    },
-    {
-      function_type: 'image_generation',
-      provider_name: 'mock',
-      store_name: 'بقالة الأمانة',
-      output_size: 1,
-      estimated_cost_usd: 0.02,
-      status: 'success',
-      created_at: 'اليوم 15:10',
-    },
-    {
-      function_type: 'text_analysis',
-      provider_name: 'mock',
-      store_name: null,
-      output_size: 120,
-      estimated_cost_usd: 0.005,
-      status: 'success',
-      created_at: 'اليوم 12:00',
-    },
-  ];
+  newManager = { name: '', email: '', phone: '', branchId: '' };
 
-  newManager = {
-    name: '',
-    email: '',
-    phone: '',
-    branchId: '',
-  };
+  availableBranches: any[] = [];
+  branchManagers: any[] = [];
 
-  availableBranches = [
-    { id: 1, name: 'فرع وسط البلد', storeName: 'مطعم الكرنك' },
-    { id: 2, name: 'فرع المعنا', storeName: 'مطعم الكرنك' },
-    { id: 3, name: 'فرع سيدي عبد الرحيم', storeName: 'بقالة الأمانة' },
-  ];
-
-  branchManagers = [
-    {
-      id: 1,
-      name: 'يوسف محمود',
-      phone: '01011223344',
-      email: 'youssef@karank.com',
-      branchId: 1,
-      branchName: 'فرع وسط البلد',
-      storeName: 'مطعم الكرنك',
-      status: 'active',
-    },
-    {
-      id: 2,
-      name: 'عمر القنائي',
-      phone: '01199887766',
-      email: 'omar@karank.com',
-      branchId: 2,
-      branchName: 'فرع المعنا',
-      storeName: 'مطعم الكرنك',
-      status: 'active',
-    },
-  ];
-
-  settings = {
-    subscription_contact_number: '+201055370118',
+  settings: any = {
+    subscription_contact_number: '',
     unaccepted_order_alert_minutes: 10,
     order_rate_limit_per_minute: 5,
   };
 
-  testZones = [
-    { name: 'وسط البلد', fee: 10 },
-    { name: 'المعنا', fee: 15 },
-    { name: 'الجامعة ومساكن الشباب', fee: 15 },
-    { name: 'حي المصالح والشوؤن', fee: 12 },
-  ];
+  testZones: any[] = [];
 
-  stores = [
-    {
-      id: 1,
-      name: 'مطعم الكرنك (تجريبي)',
-      type: 'restaurant',
-      owner: 'أحمد محمود',
-      phone: '01012345678',
-      active: true,
-      is_frozen: false,
-      freeze_reason: '',
-    },
-    {
-      id: 2,
-      name: 'بقالة الأمانة (تجريبي)',
-      type: 'grocery',
-      owner: 'إبراهيم علي',
-      phone: '01123456789',
-      active: true,
-      is_frozen: false,
-      freeze_reason: '',
-    },
-    {
-      id: 3,
-      name: 'مطعم الشام (تجريبي)',
-      type: 'restaurant',
-      owner: 'خالد سليم',
-      phone: '01234567890',
-      active: false,
-      is_frozen: false,
-      freeze_reason: '',
-    },
-  ];
+  stores: any[] = [];
+  orders: any[] = [];
+  customers: any[] = [];
 
-  orders = [
-    {
-      id: 101,
-      orderNumber: 'ORD-QNA-001',
-      storeName: 'مطعم الكرنك (تجريبي)',
-      customerName: 'محمود حسن',
-      customerPhone: '01098765432',
-      grandTotal: 175.0,
-      status: 'new',
-      minutesAgo: 14,
-      isDelayed: true,
-    },
-    {
-      id: 102,
-      orderNumber: 'ORD-QNA-002',
-      storeName: 'بقالة الأمانة (تجريبي)',
-      customerName: 'سارة مصطفى',
-      customerPhone: '01144556677',
-      grandTotal: 95.5,
-      status: 'preparing',
-      minutesAgo: 5,
-      isDelayed: false,
-    },
-  ];
+  ngOnInit(): void {
+    this.loadAll();
+  }
 
-  customers = [
-    {
-      id: 1,
-      name: 'محمود حسن',
-      phone: '01098765432',
-      email: 'mahmoud@example.com',
-      status: 'active',
-    },
-    {
-      id: 2,
-      name: 'سارة مصطفى',
-      phone: '01144556677',
-      email: 'sara@example.com',
-      status: 'active',
-    },
-    {
-      id: 3,
-      name: 'مستخدم محظور (تجريبي)',
-      phone: '01511223344',
-      email: 'suspended@example.com',
-      status: 'suspended',
-    },
-  ];
+  loadAll(): void {
+    this.loading = true;
+    this.loadError = '';
+    let failed = false;
+    const fail = (err: { message?: string }) => {
+      failed = true;
+      this.loadError = err?.message || 'تعذر تحميل بيانات اللوحة';
+      this.loading = false;
+      this.cdr.markForCheck();
+    };
+
+    this.api.getAdminStores().subscribe({
+      next: (stores) => {
+        this.stores = stores.map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          type: s.type,
+          owner: s.users?.[0]?.name ?? '',
+          phone: s.users?.[0]?.phone ?? '',
+          active: !!s.is_active,
+          is_frozen: !!s.ai_frozen,
+          freeze_reason: s.ai_freeze_reason ?? '',
+        }));
+        this.availableBranches = stores.flatMap((s: any) =>
+          (s.branches ?? []).map((b: any) => ({ id: b.id, name: b.name, storeName: s.name })),
+        );
+        this.loading = false;
+        this.cdr.markForCheck();
+      },
+      error: fail,
+    });
+
+    this.api.getAdminOrders().subscribe({
+      next: (data: any) => {
+        const list = Array.isArray(data) ? data : (data.orders ?? []);
+        this.orders = list.map((o: any) => this.toViewOrder(o));
+        this.cdr.markForCheck();
+      },
+      error: fail,
+    });
+
+    this.api.getAdminCustomers().subscribe({
+      next: (customers) => {
+        this.customers = customers.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          phone: c.phone ?? '',
+          email: c.email ?? '',
+          status: c.status,
+        }));
+        this.cdr.markForCheck();
+      },
+      error: fail,
+    });
+
+    this.api.getAdminBranchManagers().subscribe({
+      next: (managers) => {
+        this.branchManagers = managers.map((m: any) => {
+          const branch = m.managed_branches?.[0];
+          return {
+            id: m.id,
+            name: m.name,
+            phone: m.phone ?? '',
+            email: m.email ?? '',
+            branchId: branch?.id ?? null,
+            branchName: branch?.name ?? '',
+            storeName: branch?.store?.name ?? '',
+            status: m.status,
+          };
+        });
+        this.cdr.markForCheck();
+      },
+      error: fail,
+    });
+
+    this.api.getAdminSettings().subscribe({
+      next: (settings) => {
+        this.settings = { ...this.settings, ...settings };
+        this.cdr.markForCheck();
+      },
+      error: fail,
+    });
+
+    this.loadAnalytics();
+    this.loadAiData();
+  }
+
+  private toViewOrder(o: any): any {
+    const minutesAgo = o.created_at
+      ? Math.max(0, Math.round((Date.now() - new Date(o.created_at).getTime()) / 60000))
+      : 0;
+    return {
+      id: o.id,
+      orderNumber: o.order_number,
+      storeName: o.store?.name ?? '',
+      customerName: o.customer_name,
+      customerPhone: o.customer_phone,
+      grandTotal: parseFloat(o.grand_total),
+      status: o.status,
+      minutesAgo,
+      isDelayed:
+        o.status === 'new' && minutesAgo >= (this.settings.unaccepted_order_alert_minutes || 10),
+    };
+  }
+
+  private loadAnalytics(): void {
+    this.api.getAdminAnalytics(this.analyticsPeriod).subscribe({
+      next: (data) => {
+        this.analyticsData = { ...this.analyticsData, ...data };
+        this.cdr.markForCheck();
+      },
+      error: () => this.cdr.markForCheck(),
+    });
+  }
+
+  private loadAiData(): void {
+    this.api.getAdminAiSettings().subscribe({
+      next: (data: any) => {
+        if (data?.functions) {
+          for (const key of Object.keys(this.aiSettings)) {
+            if (data.functions[key]) {
+              this.aiSettings[key] = { ...this.aiSettings[key], ...data.functions[key], api_key_input: '' };
+            }
+          }
+          this.aiKillSwitchActive = !!data.kill_switch_active;
+        } else if (data) {
+          this.aiSettings = { ...this.aiSettings, ...data };
+        }
+        this.cdr.markForCheck();
+      },
+      error: () => this.cdr.markForCheck(),
+    });
+    this.api.getAdminAiStoresQuota().subscribe({
+      next: (data: any) => {
+        const list = Array.isArray(data) ? data : (data.stores ?? []);
+        this.aiStores = list.map((s: any) => ({
+          id: s.id ?? s.store_id,
+          name: s.name ?? s.store_name,
+          is_frozen: !!(s.is_frozen ?? s.ai_frozen),
+          freeze_reason: s.freeze_reason ?? '',
+        }));
+        this.cdr.markForCheck();
+      },
+      error: () => this.cdr.markForCheck(),
+    });
+    this.api.getAdminAiUsageLogs().subscribe({
+      next: (data: any) => {
+        const list = Array.isArray(data) ? data : (data.logs ?? []);
+        this.aiUsageLogs = list;
+        this.cdr.markForCheck();
+      },
+      error: () => this.cdr.markForCheck(),
+    });
+  }
 
   unacceptedAlertCount() {
     return this.orders.filter(
@@ -1757,59 +1760,96 @@ export class AdminDashboardComponent {
   }
 
   filteredCustomers() {
-    const q = this.customerSearchQuery.trim().toLowerCase();
-    if (!q) return this.customers;
+    if (!this.customerSearchQuery.trim()) return this.customers;
+    const q = this.customerSearchQuery.trim();
     return this.customers.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        c.phone.includes(q) ||
-        c.email.toLowerCase().includes(q),
+      (c) => c.name.includes(q) || c.phone.includes(q) || c.email.includes(q),
     );
   }
 
   getStatusLabel(status: string): string {
     const map: Record<string, string> = {
-      new: 'جديد',
-      accepted: 'مقبول',
-      preparing: 'جاري التجهيز',
+      new: 'طلب جديد',
+      accepted: 'تم القبول',
+      preparing: 'جاري التحضير',
       out_for_delivery: 'خرج للتوصيل',
       delivered: 'تم التوصيل',
       cancelled: 'ملغي',
-      rejected: 'مرفوض',
+      rejected: 'معتذر عنه',
     };
     return map[status] || status;
   }
 
   toggleStoreStatus(store: any) {
-    store.active = !store.active;
+    const next = !store.active;
+    const reason = prompt(next ? 'سبب إعادة تفعيل المتجر:' : 'سبب إيقاف المتجر:');
+    if (!reason || !reason.trim()) return;
+    this.actionError = '';
+    this.api.toggleAdminStoreStatus(store.id, next, reason.trim()).subscribe({
+      next: () => {
+        store.active = next;
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.actionError = err?.message || 'تعذر تحديث حالة المتجر';
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   toggleCustomerStatus(cust: any) {
-    cust.status = cust.status === 'active' ? 'suspended' : 'active';
+    const next = cust.status === 'active' ? 'suspended' : 'active';
+    const reason = prompt(next === 'suspended' ? 'سبب إيقاف العميل:' : 'سبب إعادة تفعيل العميل:');
+    if (!reason || !reason.trim()) return;
+    this.actionError = '';
+    this.api.toggleAdminCustomerStatus(cust.id, next, reason.trim()).subscribe({
+      next: () => {
+        cust.status = next;
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.actionError = err?.message || 'تعذر تحديث حالة العميل';
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   openStatusOverrideModal(order: any) {
     this.selectedOrderForOverride.set(order);
-    this.overrideReason = '';
   }
 
   confirmStatusOverride() {
     const ord = this.selectedOrderForOverride();
-    if (ord && this.overrideReason.trim()) {
-      ord.status = this.overrideNewStatus;
-      ord.isDelayed = false;
-      this.selectedOrderForOverride.set(null);
+    if (!ord) return;
+    if (!this.overrideReason.trim()) {
+      this.actionError = 'سبب التدخل اليدوي إلزامي';
+      this.cdr.markForCheck();
+      return;
     }
+    this.actionError = '';
+    this.api.overrideAdminOrderStatus(ord.id, this.overrideNewStatus, this.overrideReason.trim()).subscribe({
+      next: () => {
+        ord.status = this.overrideNewStatus;
+        this.selectedOrderForOverride.set(null);
+        this.overrideReason = '';
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.actionError = err?.message || 'تعذر تعديل حالة الطلب';
+        this.selectedOrderForOverride.set(null);
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   openBranchManagerModal() {
-    this.newManager = { name: '', email: '', phone: '', branchId: '' };
     this.managerCreationError = '';
     this.showNewBranchManagerModal.set(true);
   }
 
   closeBranchManagerModal() {
     this.showNewBranchManagerModal.set(false);
+    this.newManager = { name: '', email: '', phone: '', branchId: '' };
     this.managerCreationError = '';
   }
 
@@ -1830,13 +1870,11 @@ export class AdminDashboardComponent {
       return;
     }
 
-    // Check Egyptian phone
     if (!/^01[0125][0-9]{8}$/.test(this.newManager.phone.trim())) {
       this.managerCreationError = this.t.customer.checkout.phoneInvalid;
       return;
     }
 
-    // Check duplicate email or phone
     const exists = this.branchManagers.some(
       (bm) =>
         bm.email.toLowerCase() === this.newManager.email.trim().toLowerCase() ||
@@ -1853,66 +1891,132 @@ export class AdminDashboardComponent {
       return;
     }
 
-    const created = {
-      id: Date.now(),
-      name: this.newManager.name.trim(),
-      email: this.newManager.email.trim(),
-      phone: this.newManager.phone.trim(),
-      branchId: branch.id,
-      branchName: branch.name,
-      storeName: branch.storeName,
-      status: 'active',
-    };
-
-    this.branchManagers.push(created);
-    this.closeBranchManagerModal();
-    const successMsg = this.t.admin.branchManagers.createdSuccess.replace(
-      '{branchName}',
-      branch.name,
-    );
-    alert(successMsg);
+    this.api
+      .createAdminBranchManager({
+        name: this.newManager.name.trim(),
+        email: this.newManager.email.trim(),
+        phone: this.newManager.phone.trim(),
+        branch_id: branch.id,
+      })
+      .subscribe({
+        next: (created: any) => {
+          this.branchManagers.push({
+            id: created?.id ?? created?.user?.id ?? Date.now(),
+            name: this.newManager.name.trim(),
+            email: this.newManager.email.trim(),
+            phone: this.newManager.phone.trim(),
+            branchId: branch.id,
+            branchName: branch.name,
+            storeName: branch.storeName,
+            status: 'active',
+          });
+          this.closeBranchManagerModal();
+          const successMsg = this.t.admin.branchManagers.createdSuccess.replace(
+            '{branchName}',
+            branch.name,
+          );
+          this.actionSuccess = successMsg;
+          this.cdr.markForCheck();
+        },
+        error: (err: { message?: string }) => {
+          this.managerCreationError = err?.message || 'تعذر إنشاء حساب المسؤول';
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   toggleBranchManagerStatus(bm: any) {
     const reason = prompt(this.t.admin.branchManagers.confirmReasonPrompt);
-    if (reason && reason.trim()) {
-      bm.status = bm.status === 'active' ? 'suspended' : 'active';
-      alert(`تم تحديث حالة المسؤول ${bm.name} وتوثيق السبب في سجل التغييرات`);
-    }
+    if (!reason || !reason.trim()) return;
+    const next = bm.status === 'active' ? 'suspended' : 'active';
+    this.actionError = '';
+    this.api.toggleAdminBranchManagerStatus(bm.id, next, reason.trim()).subscribe({
+      next: () => {
+        bm.status = next;
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.actionError = err?.message || 'تعذر تحديث حالة المسؤول';
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   setAnalyticsPeriod(period: 'today' | 'week' | 'month' | 'all') {
     this.analyticsPeriod = period;
+    this.loadAnalytics();
   }
 
   toggleKillSwitch() {
-    this.aiKillSwitchActive = !this.aiKillSwitchActive;
-    if (this.aiKillSwitchActive) {
-      alert('تم تفعيل الإيقاف الطارئ لخدمات الذكاء الاصطناعي بنجاح');
-    } else {
-      alert('تم إلغاء الإيقاف الطارئ وإعادة تفعيل خدمات الذكاء الاصطناعي');
-    }
+    const next = !this.aiKillSwitchActive;
+    this.actionError = '';
+    this.api.toggleAdminAiKillSwitch(next).subscribe({
+      next: () => {
+        this.aiKillSwitchActive = next;
+        this.actionSuccess = next
+          ? 'تم تفعيل الإيقاف الطارئ لخدمات الذكاء الاصطناعي بنجاح'
+          : 'تم إلغاء الإيقاف الطارئ وإعادة تفعيل خدمات الذكاء الاصطناعي';
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.actionError = err?.message || 'تعذر تحديث مفتاح الإيقاف الطارئ';
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   saveAiSettings(fnType: string) {
-    alert(`تم حفظ وتحديث إعدادات وميزانية وظيفة (${fnType}) بنجاح`);
+    const s = this.aiSettings[fnType];
+    if (!s) return;
+    this.actionError = '';
+    const payload: Record<string, unknown> = {
+      provider_name: s.provider_name,
+      cost_limit_daily_usd: s.cost_limit_daily_usd,
+      cost_limit_monthly_usd: s.cost_limit_monthly_usd,
+      store_daily_quota: s.store_daily_quota,
+    };
+    if (s.api_key_input) payload['api_key'] = s.api_key_input;
+    this.api.saveAdminAiSettings(fnType, payload).subscribe({
+      next: () => {
+        this.actionSuccess = 'تم حفظ إعدادات الوظيفة بنجاح';
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.actionError = err?.message || 'تعذر حفظ الإعدادات';
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   testAiConnection(fnType: string) {
-    alert(`تم فحص الاتصال بالمزود لوظيفة (${fnType}): الاتصال ناجح ومستقر`);
+    this.actionError = '';
+    this.api.testAdminAiConnection(fnType).subscribe({
+      next: () => {
+        this.actionSuccess = 'الاتصال بالمزود ناجح ومستقر';
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.actionError = err?.message || 'فشل فحص الاتصال بالمزود';
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   toggleStoreFreeze(store: any) {
-    if (!store.is_frozen) {
-      const reason = prompt('اكتب سبب تجميد الـ AI لهذا المتجر:') || 'إيقاف إداري';
-      store.is_frozen = true;
-      store.freeze_reason = reason;
-      alert(`تم تجميد استخدام الـ AI لمتجر ${store.name}`);
-    } else {
-      store.is_frozen = false;
-      store.freeze_reason = '';
-      alert(`تم فك تجميد استخدام الـ AI لمتجر ${store.name}`);
-    }
+    const freeze = !store.is_frozen;
+    const reason = freeze ? (prompt('اكتب سبب تجميد الـ AI لهذا المتجر:') || 'إيقاف إداري') : 'فك تجميد إداري';
+    this.actionError = '';
+    this.api.toggleAdminStoreFreeze(store.id, freeze, reason).subscribe({
+      next: () => {
+        store.is_frozen = freeze;
+        store.freeze_reason = freeze ? reason : '';
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.actionError = err?.message || 'تعذر تحديث حالة تجميد المتجر';
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   openAiAnalyzePreviewModal() {
@@ -1925,7 +2029,7 @@ export class AdminDashboardComponent {
         scope: 'Qena City, Egypt',
         period: this.analyticsPeriod,
         total_orders: this.analyticsData.orders.total_orders,
-        delivered_orders: this.analyticsData.orders.by_status.delivered,
+        delivered_orders: this.analyticsData.orders.by_status?.delivered ?? 0,
         total_customers: this.analyticsData.users.total_customers,
         active_customers: this.analyticsData.users.active_customers_in_period,
         delivered_cash_value_egp: this.analyticsData.cash_summary.delivered_cash_total_egp,
@@ -1939,20 +2043,23 @@ export class AdminDashboardComponent {
 
   confirmAndRunAiAnalysis() {
     this.isAnalyzingAi = true;
-    setTimeout(() => {
-      this.isAnalyzingAi = false;
-      this.showAiAnalyzePreviewModal.set(false);
-      this.aiResultText =
-        'تحليل تجريبي لبيانات منصة أوردرات في مدينة قنا:\n' +
-        '- تشير الأرقام المجمعة إلى تركيز 66% من طلبات المنصة في منطقتي (وسط البلد) و(الجامعة ومساكن الشباب).\n' +
-        '- نسبة اكتمال الطلبات المسلمة كاش مرتفعة (75%)، مما يعكس كفاءة مناديب المتاجر في التوصيل.\n' +
-        '- الطلبات المرفوعة كمسودات منيو سهلت إضافة أصناف جديدة ورفعت تفاعل أصحاب المحلات بنسبة 40%.';
-      this.aiResultHypothesesList = [
-        'فرضية: إطلاق حملة تنشيط موجهة لمنطقة المعنا والمصالح لرفع حجم الطلبات بها.',
-        'فرضية: تذكير المطاعم بتحديث قوائم الطعام وقت الظهيرة يقلل نسبة الطلبات المتأخرة.',
-      ];
-      this.showAiAnalyzeResultModal.set(true);
-    }, 800);
+    this.actionError = '';
+    this.api.analyzeAdminPlatform(JSON.parse(this.aiPayloadPreviewJson())).subscribe({
+      next: (result: any) => {
+        this.isAnalyzingAi = false;
+        this.showAiAnalyzePreviewModal.set(false);
+        this.aiResultText = result?.analysis ?? result?.text ?? '';
+        this.aiResultHypothesesList = result?.hypotheses ?? [];
+        this.showAiAnalyzeResultModal.set(true);
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.isAnalyzingAi = false;
+        this.showAiAnalyzePreviewModal.set(false);
+        this.actionError = err?.message || 'تعذر تشغيل التحليل. تأكد من إعداد مزود الذكاء الاصطناعي';
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   aiResultParagraphs(): string[] {
@@ -1964,6 +2071,22 @@ export class AdminDashboardComponent {
   }
 
   saveSettings() {
-    alert('تم حفظ إعدادات منصة أوردرات بنجاح');
+    this.actionError = '';
+    this.api
+      .saveAdminSettings({
+        subscription_contact_number: this.settings.subscription_contact_number,
+        unaccepted_order_alert_minutes: this.settings.unaccepted_order_alert_minutes,
+        order_rate_limit_per_minute: this.settings.order_rate_limit_per_minute,
+      })
+      .subscribe({
+        next: () => {
+          this.actionSuccess = 'تم حفظ إعدادات المنصة بنجاح';
+          this.cdr.markForCheck();
+        },
+        error: (err: { message?: string }) => {
+          this.actionError = err?.message || 'تعذر حفظ الإعدادات';
+          this.cdr.markForCheck();
+        },
+      });
   }
 }

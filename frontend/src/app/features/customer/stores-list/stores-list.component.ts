@@ -1,13 +1,26 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AR_TRANSLATIONS } from '../../../core/constants/translations';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { LoadingStateComponent } from '../../../shared/components/loading-state/loading-state.component';
+import { ErrorStateComponent } from '../../../shared/components/error-state/error-state.component';
+import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { ApiService, ApiStore } from '../../../core/services/api.service';
+
+const PLACEHOLDER_IMG =
+  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="160" viewBox="0 0 300 160"><rect width="300" height="160" fill="%230E5A6B"/><text x="50%" y="50%" fill="%23FFFFFF" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="18">أوردرات - قنا</text></svg>';
 
 @Component({
   selector: 'app-stores-list',
   standalone: true,
-  imports: [CommonModule, EmptyStateComponent],
+  imports: [
+    CommonModule,
+    EmptyStateComponent,
+    LoadingStateComponent,
+    ErrorStateComponent,
+    IconComponent,
+  ],
   template: `
     <div class="stores-page">
       <div class="tabs-header">
@@ -16,24 +29,42 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
           [class.active]="selectedTab === 'restaurants'"
           (click)="selectedTab = 'restaurants'"
         >
-          🍔 {{ t.customer.storesList.tabs.restaurants }}
+          <app-icon name="utensils" [size]="18" />
+          {{ t.customer.storesList.tabs.restaurants }}
         </button>
         <button
           class="tab-btn"
           [class.active]="selectedTab === 'groceries'"
           (click)="selectedTab = 'groceries'"
         >
-          🛒 {{ t.customer.storesList.tabs.groceries }}
+          <app-icon name="shopping-basket" [size]="18" />
+          {{ t.customer.storesList.tabs.groceries }}
         </button>
       </div>
 
-      <div class="stores-grid" *ngIf="stores.length > 0; else emptyBlock">
+      <app-loading-state
+        *ngIf="loading"
+        [message]="t.customer.storesList.loading"
+      ></app-loading-state>
+
+      <app-error-state
+        *ngIf="!loading && loadError"
+        [message]="loadError"
+        (retry)="loadStores()"
+      ></app-error-state>
+
+      <div class="stores-grid" *ngIf="!loading && !loadError && filteredStores.length > 0">
         <div *ngFor="let store of filteredStores" class="store-card" (click)="viewStore(store.id)">
           <div class="store-image-wrap">
-            <img [src]="store.image_url" [alt]="store.name" class="store-img" />
-            <span class="status-badge" [class.open]="store.is_open" [class.closed]="!store.is_open">
+            <img
+              [src]="store.image_url || placeholderImg"
+              [alt]="store.name"
+              class="store-img"
+              loading="lazy"
+            />
+            <span class="status-badge" [class.open]="store.is_accepting_orders" [class.closed]="!store.is_accepting_orders">
               {{
-                store.is_open
+                store.is_accepting_orders
                   ? t.customer.storesList.statusOpen
                   : t.customer.storesList.statusClosed
               }}
@@ -52,7 +83,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
         </div>
       </div>
 
-      <ng-template #emptyBlock>
+      <ng-container *ngIf="!loading && !loadError && filteredStores.length === 0">
         <app-empty-state
           [title]="
             selectedTab === 'restaurants'
@@ -60,7 +91,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
               : t.customer.storesList.emptyGroceries
           "
         ></app-empty-state>
-      </ng-template>
+      </ng-container>
     </div>
   `,
   styles: [
@@ -76,6 +107,9 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
         margin-bottom: 1.5rem;
       }
       .tab-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
         padding: 0.75rem 1.5rem;
         border: none;
         background: transparent;
@@ -100,7 +134,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
       }
       .stores-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
         gap: 1.5rem;
       }
       .store-card {
@@ -161,39 +195,48 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
     `,
   ],
 })
-export class StoresListComponent {
+export class StoresListComponent implements OnInit {
   private readonly router = inject(Router);
+  private readonly api = inject(ApiService);
+  private readonly cdr = inject(ChangeDetectorRef);
   protected readonly t = AR_TRANSLATIONS;
+
+  readonly placeholderImg = PLACEHOLDER_IMG;
 
   selectedTab: 'restaurants' | 'groceries' = 'restaurants';
 
-  // Seeded preview stores for Qena
-  stores = [
-    {
-      id: 1,
-      name: 'مطعم الكرنك (تجريبي - قنا)',
-      type: 'restaurant',
-      is_open: true,
-      image_url:
-        'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="160" viewBox="0 0 300 160"><rect width="300" height="160" fill="%230E5A6B"/><text x="50%" y="50%" fill="%23FFFFFF" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="18">مطعم الكرنك - قنا</text></svg>',
-    },
-    {
-      id: 2,
-      name: 'بقالة الأمانة (تجريبي - قنا)',
-      type: 'grocery',
-      is_open: true,
-      image_url:
-        'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="160" viewBox="0 0 300 160"><rect width="300" height="160" fill="%23F5B335"/><text x="50%" y="50%" fill="%231E2A2F" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="18">بقالة الأمانة - قنا</text></svg>',
-    },
-  ];
+  stores: ApiStore[] = [];
+  loading = true;
+  loadError = '';
 
-  get filteredStores() {
+  ngOnInit(): void {
+    this.loadStores();
+  }
+
+  loadStores(): void {
+    this.loading = true;
+    this.loadError = '';
+    this.api.getStores().subscribe({
+      next: (stores) => {
+        this.stores = stores;
+        this.loading = false;
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.loadError = err?.message || 'تعذر تحميل المتاجر. حاول مرة تانية';
+        this.loading = false;
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  get filteredStores(): ApiStore[] {
     return this.stores.filter(
       (s) => s.type === (this.selectedTab === 'restaurants' ? 'restaurant' : 'grocery'),
     );
   }
 
-  viewStore(id: number) {
+  viewStore(id: number): void {
     this.router.navigate(['/customer/stores', id]);
   }
 }

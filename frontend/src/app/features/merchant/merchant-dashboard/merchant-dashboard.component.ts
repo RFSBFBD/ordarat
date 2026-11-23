@@ -1,7 +1,8 @@
-import { Component, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AR_TRANSLATIONS } from '../../../core/constants/translations';
+import { ApiService } from '../../../core/services/api.service';
 
 @Component({
   selector: 'app-merchant-dashboard',
@@ -9,6 +10,14 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
   imports: [CommonModule, FormsModule],
   template: `
     <div class="merchant-dashboard">
+      <div class="preview-banner" role="note" *ngIf="loading">جاري تحميل بيانات المتجر...</div>
+      <div class="preview-banner" role="alert" *ngIf="!loading && loadError">
+        {{ loadError }}
+        <button class="toggle-btn" (click)="loadStore()">إعادة المحاولة</button>
+      </div>
+      <div class="preview-banner" role="alert" *ngIf="actionError">{{ actionError }}</div>
+      <div class="preview-banner" role="status" *ngIf="actionSuccess">{{ actionSuccess }}</div>
+
       <!-- Header -->
       <div class="dash-header">
         <div>
@@ -23,7 +32,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
             [class.sound-on]="soundEnabled()"
             (click)="toggleSound()"
           >
-            {{ soundEnabled() ? '🔔 صوت التنبيه مفعّل' : '🔕 صوت التنبيه مكتوم' }}
+            {{ soundEnabled() ? 'صوت التنبيه مفعّل' : 'صوت التنبيه مكتوم' }}
           </button>
           <div class="toggle-wrap">
             <span class="status-label">استقبال الطلبات:</span>
@@ -74,7 +83,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
           [class.active]="activeTab() === 'ai_tools'"
           (click)="activeTab.set('ai_tools')"
         >
-          ✨ {{ t.store.aiTools.tabTitle }}
+          {{ t.store.aiTools.tabTitle }}
         </button>
       </div>
 
@@ -83,7 +92,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
         <!-- Branch Cards Summary Overview -->
         <div class="branches-overview-section" *ngIf="branches.length > 0">
           <div class="section-subtitle-row">
-            <h4>📍 نظرة عامة على فروع المتجر في قنا</h4>
+            <h4>نظرة عامة على فروع المتجر في قنا</h4>
             <span class="hint-text">تُوجّه الطلبات تلقائياً لأقرب فرع لموقع العميل</span>
           </div>
           <div class="branch-summary-cards">
@@ -97,7 +106,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
               <div class="bsc-body">
                 <p>⏰ مواعيد العمل: {{ b.working_hours.open }} - {{ b.working_hours.close }}</p>
                 <p>
-                  🔔 طلبات الفرع الجديدة: <strong>{{ getBranchNewOrdersCount(b.id) }}</strong>
+                  طلبات الفرع الجديدة: <strong>{{ getBranchNewOrdersCount(b.id) }}</strong>
                 </p>
               </div>
               <div class="bsc-footer">
@@ -188,7 +197,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                 <div class="order-id-wrap">
                   <span class="order-num">{{ ord.orderNumber }}</span>
                   <span class="order-time">{{ ord.timeAgo }}</span>
-                  <span class="branch-pill">📍 {{ ord.branchName || 'فرع غير محدد' }}</span>
+                  <span class="branch-pill">{{ ord.branchName || 'فرع غير محدد' }}</span>
                 </div>
                 <span class="badge" [ngClass]="'badge-' + ord.status">{{
                   getStatusLabel(ord.status)
@@ -197,10 +206,10 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
 
               <div class="customer-info-box">
                 <p class="customer-name"><strong>العميل:</strong> {{ ord.customerName }}</p>
-                <p class="customer-phone" dir="ltr">📞 {{ ord.customerPhone }}</p>
-                <p class="customer-address">📍 {{ ord.deliveryAddress }} ({{ ord.zoneName }})</p>
+                <p class="customer-phone" dir="ltr">{{ ord.customerPhone }}</p>
+                <p class="customer-address">{{ ord.deliveryAddress }} ({{ ord.zoneName }})</p>
                 <p class="customer-notes" *ngIf="ord.notes">
-                  📝 <em>ملاحظة: {{ ord.notes }}</em>
+                  <em>ملاحظة: {{ ord.notes }}</em>
                 </p>
               </div>
 
@@ -223,14 +232,14 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                   class="btn btn-success"
                   (click)="updateOrderStatus(ord, 'accepted')"
                 >
-                  ✅ قبول الطلب
+                  قبول الطلب
                 </button>
                 <button
                   *ngIf="ord.status === 'new'"
                   class="btn btn-danger-outline"
                   (click)="openRejectModal(ord)"
                 >
-                  ❌ اعتذار / رفض
+                  اعتذار / رفض
                 </button>
 
                 <button
@@ -238,7 +247,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                   class="btn btn-primary"
                   (click)="updateOrderStatus(ord, 'preparing')"
                 >
-                  🍳 بدء التحضير
+                  بدء التحضير
                 </button>
 
                 <button
@@ -246,7 +255,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                   class="btn btn-warning"
                   (click)="updateOrderStatus(ord, 'out_for_delivery')"
                 >
-                  🛵 تسليم لمندوب المتجر (خرج للتوصيل)
+                  تسليم لمندوب المتجر (خرج للتوصيل)
                 </button>
 
                 <button
@@ -254,7 +263,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                   class="btn btn-success"
                   (click)="updateOrderStatus(ord, 'delivered')"
                 >
-                  🎉 تأكيد استلام العميل وتحصيل الكاش
+                  تأكيد استلام العميل وتحصيل الكاش
                 </button>
               </div>
             </div>
@@ -306,7 +315,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                       [class.finished]="!p.is_available"
                       (click)="toggleProductAvailability(p)"
                     >
-                      {{ p.is_available ? 'متاح للطلب' : 'خلصان ⚠️' }}
+                      {{ p.is_available ? 'متاح للطلب' : 'خلصان ' }}
                     </button>
                   </td>
                   <td>
@@ -334,8 +343,8 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
           <div class="branches-grid" *ngIf="branches.length > 0">
             <div class="branch-card" *ngFor="let b of branches">
               <h4>{{ b.name }}</h4>
-              <p>📍 {{ b.address }}</p>
-              <p>📞 {{ b.phone }}</p>
+              <p>{{ b.address }}</p>
+              <p>{{ b.phone }}</p>
               <p>⏰ مواعيد العمل: {{ b.working_hours.open }} - {{ b.working_hours.close }}</p>
               <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; align-items: center;">
                 <span class="status-tag" [class.active]="b.is_accepting_orders">
@@ -367,6 +376,18 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
             <button class="btn btn-primary" (click)="saveZoneFees()">حفظ أسعار التوصيل</button>
           </div>
 
+          <div class="form-group" style="max-width: 320px; margin-bottom: 1rem;">
+            <label>الفرع</label>
+            <select
+              class="text-input"
+              [ngModel]="selectedZoneBranchId"
+              (ngModelChange)="selectedZoneBranchId = $event; loadZones()"
+            >
+              <option *ngFor="let b of branches" [ngValue]="b.id">{{ b.name }}</option>
+            </select>
+          </div>
+          <div *ngIf="zonesLoading">جاري تحميل أسعار الفرع...</div>
+
           <div class="table-responsive">
             <table class="data-table">
               <thead>
@@ -388,7 +409,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                       [class.finished]="!z.is_served"
                       (click)="z.is_served = !z.is_served"
                     >
-                      {{ z.is_served ? 'مشمولة بالتوصيل' : 'غير مغطاة ⚠️' }}
+                      {{ z.is_served ? 'مشمولة بالتوصيل' : 'غير مغطاة ' }}
                     </button>
                   </td>
                   <td>
@@ -413,7 +434,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
       <div *ngIf="activeTab() === 'ai_tools'" class="ai-tools-tab">
         <!-- Notice if unavailable -->
         <div class="ai-unavailable-card" *ngIf="!aiAvailable()">
-          <span class="warning-icon">⚠️</span>
+          <span class="warning-icon"></span>
           <div>
             <strong>{{ t.store.aiTools.unavailableNotice }}</strong>
             <p>تم إيقاف المساعد الذكي مؤقتاً أو بانتظار ضبط ميزانية الاستخدام من إدارة المنصة.</p>
@@ -424,13 +445,13 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
           <!-- OCR Menu Card -->
           <div class="ai-feature-card">
             <div class="card-header-badge">
-              <h3>📸 {{ t.store.aiTools.menuOcrTitle }}</h3>
+              <h3>{{ t.store.aiTools.menuOcrTitle }}</h3>
               <span class="badge badge-preparing">استخراج مسودة</span>
             </div>
             <p class="feature-desc">{{ t.store.aiTools.menuOcrDesc }}</p>
 
             <div class="ai-warning-box">
-              <span class="warn-icon">🔒</span>
+              <span class="warn-icon"></span>
               <div>
                 <strong>تنبيه الخصوصية والأمان:</strong>
                 <p>{{ t.store.aiTools.consentNotice }}</p>
@@ -448,7 +469,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                 class="file-input-hidden"
               />
               <label for="menuFileInput" class="btn btn-outline upload-label">
-                📁 اختيار صورة المنيو من جهازك
+                اختيار صورة المنيو من جهازك
               </label>
               <span class="file-name" *ngIf="menuImageFileName()">{{ menuImageFileName() }}</span>
             </div>
@@ -465,15 +486,15 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                 >
                   {{
                     isBlurActive()
-                      ? '🔲 إلغاء طمس البيانات'
-                      : '🛡️ تطبيق طمس الخصوصية (أرقام الهواتف)'
+                      ? 'إلغاء طمس البيانات'
+                      : 'تطبيق طمس الخصوصية (أرقام الهواتف)'
                   }}
                 </button>
               </div>
               <div class="preview-frame" [class.blurred-overlay]="isBlurActive()">
                 <img [src]="menuImagePreview()" alt="معاينة المنيو" class="preview-img" />
                 <div class="blur-indicator" *ngIf="isBlurActive()">
-                  <span>🛡️ تم تطبيق تمويه الخصوصية للبيانات الحساسة</span>
+                  <span>تم تطبيق تمويه الخصوصية للبيانات الحساسة</span>
                 </div>
               </div>
             </div>
@@ -487,7 +508,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                 {{
                   isExtractingMenu()
                     ? '⏳ جاري استخراج وقراءة الأصناف...'
-                    : '✨ استخراج مسودة المنيو'
+                    : 'استخراج مسودة المنيو'
                 }}
               </button>
             </div>
@@ -496,7 +517,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
             <div class="drafts-section" *ngIf="menuDrafts().length > 0">
               <hr class="section-divider" />
               <div class="draft-header-row">
-                <h4>📋 {{ t.store.aiTools.draftTitle }}</h4>
+                <h4>{{ t.store.aiTools.draftTitle }}</h4>
                 <span class="hint-text"
                   >تظهر كمسودة فقط ولا تُضاف لمتجرك إلا بعد مراجعتك واعتمادك</span
                 >
@@ -538,10 +559,10 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                         </td>
                         <td>
                           <span class="badge badge-warning-custom" *ngIf="item.is_ambiguous">
-                            ⚠️ سعر غامض (يُرجى التأكيد)
+                            سعر غامض (يُرجى التأكيد)
                           </span>
                           <span class="badge badge-accepted" *ngIf="!item.is_ambiguous">
-                            ✅ واضح
+                            واضح
                           </span>
                         </td>
                         <td>
@@ -552,7 +573,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                               [class.btn-outline]="!item.is_accepted"
                               (click)="item.is_accepted = !item.is_accepted"
                             >
-                              {{ item.is_accepted ? 'معتمد ✅' : 'استبعاد' }}
+                              {{ item.is_accepted ? 'معتمد ' : 'استبعاد' }}
                             </button>
                             <button
                               class="btn btn-sm btn-danger-outline"
@@ -569,7 +590,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
 
                 <div class="draft-actions-footer">
                   <button class="btn btn-success" (click)="importAcceptedDraftItems(draft)">
-                    🚀 {{ t.store.aiTools.importBtn }}
+                    {{ t.store.aiTools.importBtn }}
                   </button>
                 </div>
               </div>
@@ -579,7 +600,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
           <!-- Product Illustrative Image Generator Card -->
           <div class="ai-feature-card">
             <div class="card-header-badge">
-              <h3>🎨 {{ t.store.aiTools.imageGenTitle }}</h3>
+              <h3>{{ t.store.aiTools.imageGenTitle }}</h3>
               <span class="badge badge-accepted">توليد توضيحي</span>
             </div>
             <p class="feature-desc">{{ t.store.aiTools.imageGenDesc }}</p>
@@ -616,7 +637,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                 {{
                   isGeneratingImage()
                     ? '⏳ جاري توليد الصورة التوضيحية...'
-                    : '✨ توليد صورة توضيحية'
+                    : 'توليد صورة توضيحية'
                 }}
               </button>
             </div>
@@ -625,7 +646,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
             <div class="generated-preview-card" *ngIf="generatedImage()">
               <div class="preview-badge-row">
                 <span class="badge badge-illustrative"
-                  >🎨 {{ t.store.aiTools.illustrativeBadge }}</span
+                  >{{ t.store.aiTools.illustrativeBadge }}</span
                 >
                 <span class="dedup-hint">تم تحسين الاسم ومطابقته لمنع الازدواجية</span>
               </div>
@@ -647,7 +668,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
                 >
                   {{
                     generatedImage()?.is_approved
-                      ? 'تم الاعتماد بنجاح ✅'
+                      ? 'تم الاعتماد بنجاح '
                       : t.store.aiTools.approveImageBtn
                   }}
                 </button>
@@ -740,6 +761,18 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
   `,
   styles: [
     `
+      .preview-banner {
+        background: #fff8e6;
+        border: 1px dashed var(--color-accent);
+        color: #7a5b00;
+        border-radius: 8px;
+        padding: 0.6rem 1rem;
+        margin-bottom: 1rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-align: center;
+      }
+
       .merchant-dashboard {
         max-width: 1200px;
         margin: 0 auto;
@@ -1512,59 +1545,36 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
     `,
   ],
 })
-export class MerchantDashboardComponent {
+export class MerchantDashboardComponent implements OnInit {
   protected readonly t = AR_TRANSLATIONS;
+
+  private readonly api = inject(ApiService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   activeTab = signal<'orders' | 'products' | 'branches' | 'zones' | 'ai_tools'>('orders');
   soundEnabled = signal<boolean>(true);
   showNewProductModal = signal<boolean>(false);
   selectedOrderForRejection = signal<any | null>(null);
 
+  loading = true;
+  loadError = '';
+  actionError = '';
+  actionSuccess = '';
+
   // AI Tools Signals & State
   aiAvailable = signal<boolean>(true);
   menuImagePreview = signal<string | null>(null);
   menuImageFileName = signal<string | null>(null);
+  menuImageFile: File | null = null;
   isBlurActive = signal<boolean>(false);
   isExtractingMenu = signal<boolean>(false);
-  menuDrafts = signal<any[]>([
-    {
-      id: 1,
-      title: 'مسودة منيو تجريبية مستخرجة',
-      created_at: 'الآن',
-      status: 'draft',
-      items: [
-        {
-          id: 101,
-          name: 'فراخ مشوية على الفحم شيش',
-          category_name: 'مشويات',
-          price: 120.0,
-          is_ambiguous: false,
-          is_accepted: true,
-        },
-        {
-          id: 102,
-          name: 'طاجن عكاوي بلدي بالبصل',
-          category_name: 'طواجن',
-          price: 160.0,
-          is_ambiguous: true,
-          is_accepted: false,
-        },
-        {
-          id: 103,
-          name: 'سلطة طحينة قناوية فاخرة',
-          category_name: 'مقبلات',
-          price: 15.0,
-          is_ambiguous: false,
-          is_accepted: true,
-        },
-      ],
-    },
-  ]);
+  menuDrafts = signal<any[]>([]);
 
   imageGenProductName = '';
   imageGenCategory = 'مشويات';
   isGeneratingImage = signal<boolean>(false);
   generatedImage = signal<{
+    id: number | null;
     name: string;
     url: string;
     is_illustrative: boolean;
@@ -1576,10 +1586,10 @@ export class MerchantDashboardComponent {
   rejectionReason = 'نفاد أحد الأصناف المطلوبة حالياً';
 
   currentStore = {
-    id: 1,
-    name: 'مطعم الكرنك الأصيل (قنا)',
+    id: 0,
+    name: '',
     type: 'restaurant',
-    is_accepting_orders: true,
+    is_accepting_orders: false,
   };
 
   newProduct = {
@@ -1588,128 +1598,217 @@ export class MerchantDashboardComponent {
     description: '',
   };
 
-  branches = [
-    {
-      id: 1,
-      name: 'فرع وسط البلد',
-      address: 'شارع الجمهورية - أمام المحطة، قنا',
-      phone: '01012345678',
-      is_active: true,
-      is_accepting_orders: true,
-      working_hours: { open: '09:00 ص', close: '11:00 م' },
-    },
-    {
-      id: 2,
-      name: 'فرع المعنا',
-      address: 'طريق مصر أسوان الزراعي، قنا',
-      phone: '01099887766',
-      is_active: true,
-      is_accepting_orders: true,
-      working_hours: { open: '10:00 ص', close: '12:00 م' },
-    },
-  ];
+  branches: any[] = [];
 
-  branchZones = [
-    { id: 1, name: 'وسط البلد', fee: 10.0, is_served: true },
-    { id: 2, name: 'المعنا', fee: 15.0, is_served: true },
-    { id: 3, name: 'الجامعة ومساكن الشباب', fee: 15.0, is_served: true },
-    { id: 4, name: 'حي المصالح والشوؤن', fee: 12.0, is_served: true },
-  ];
+  selectedZoneBranchId: number | null = null;
+  branchZones: Array<{ id: number; name: string; fee: number; is_served: boolean }> = [];
+  zonesLoading = false;
 
-  saveZoneFees() {
-    alert('تم حفظ وتحديث أسعار التوصيل لمناطق قنا بنجاح');
+  products: any[] = [];
+
+  orders: any[] = [];
+
+  ngOnInit(): void {
+    this.loadStore();
   }
 
-  products = [
-    {
-      id: 1,
-      name: 'وجبة كباب وكفتة مشوي على الفحم',
-      categoryName: 'مشويات',
-      price: 130.0,
-      description: 'نصف كيلو كفتة وكباب مع أرز وطحينة وسلطة خضراء وعيش بلدي',
-      is_available: true,
-    },
-    {
-      id: 2,
-      name: 'ساندوتش كفتة قناوي',
-      categoryName: 'سندوتشات',
-      price: 45.0,
-      description: 'عيش بلدي سخن مع طحينة وخضار',
-      is_available: true,
-    },
-    {
-      id: 3,
-      name: 'طاجن بامية باللحمة البلدي',
-      categoryName: 'طواجن',
-      price: 110.0,
-      description: 'طاجن فخار بامية صعيدي مسبكة بلحمة طازة',
-      is_available: false, // خلصان
-    },
-  ];
+  loadStore(): void {
+    this.loading = true;
+    this.loadError = '';
+    this.api.getMerchantStores().subscribe({
+      next: (stores) => {
+        const store = stores[0];
+        if (!store) {
+          this.loadError = 'لا يوجد متجر مرتبط بهذا الحساب بعد';
+          this.loading = false;
+          this.cdr.markForCheck();
+          return;
+        }
+        this.currentStore = {
+          id: store.id,
+          name: store.name,
+          type: store.type,
+          is_accepting_orders: store.is_accepting_orders,
+        };
+        this.loadBranches();
+        this.loadProducts();
+        this.loadOrders();
+        this.loadMenuDrafts();
+      },
+      error: (err: { message?: string }) => {
+        this.loadError = err?.message || 'تعذر تحميل بيانات المتجر. حاول مرة تانية';
+        this.loading = false;
+        this.cdr.markForCheck();
+      },
+    });
+  }
 
-  orders = [
-    {
-      id: 101,
-      orderNumber: 'ORD-QNA-501',
-      branchId: 1,
-      branchName: 'فرع وسط البلد',
-      customerName: 'محمود حسن',
-      customerPhone: '01098765432',
-      deliveryAddress: 'شارع الهلال الأحمر، بجوار مسجد سيدي عبد الرحيم القنائي',
-      zoneName: 'وسط البلد',
-      notes: 'الرجاء الاتصال عند الوصول',
-      status: 'new',
-      timeAgo: 'منذ 3 دقائق',
-      itemsTotal: 175.0,
-      deliveryFee: 15.0,
-      grandTotal: 190.0,
-      items: [
-        { name: 'وجبة كباب وكفتة مشوي على الفحم', quantity: 1, price: 130.0 },
-        { name: 'ساندوتش كفتة قناوي', quantity: 1, price: 45.0 },
-      ],
-    },
-    {
-      id: 102,
-      orderNumber: 'ORD-QNA-502',
-      branchId: 2,
-      branchName: 'فرع المعنا',
-      customerName: 'إبراهيم ناصر',
-      customerPhone: '01122334455',
-      deliveryAddress: 'مساكن عثمان، شقة 4',
-      zoneName: 'الجامعة ومساكن الشباب',
-      notes: '',
-      status: 'preparing',
-      timeAgo: 'منذ 18 دقيقة',
-      itemsTotal: 90.0,
-      deliveryFee: 15.0,
-      grandTotal: 105.0,
-      items: [{ name: 'ساندوتش كفتة قناوي', quantity: 2, price: 45.0 }],
-    },
-    {
-      id: 103,
-      orderNumber: 'ORD-QNA-498',
-      branchId: 1,
-      branchName: 'فرع وسط البلد',
-      customerName: 'ياسر فاروق',
-      customerPhone: '01233445566',
-      deliveryAddress: 'حي المصالح، قنا',
-      zoneName: 'حي المصالح',
-      notes: '',
-      status: 'delivered',
-      timeAgo: 'منذ ساعة',
-      itemsTotal: 260.0,
-      deliveryFee: 12.0,
-      grandTotal: 272.0,
-      items: [{ name: 'وجبة كباب وكفتة مشوي على الفحم', quantity: 2, price: 130.0 }],
-    },
-  ];
+  private loadBranches(): void {
+    this.api.getMerchantBranches(this.currentStore.id).subscribe({
+      next: (branches) => {
+        this.branches = branches.map((b) => ({
+          id: b.id,
+          name: b.name,
+          address: b.address ?? '',
+          phone: b.phone ?? '',
+          is_active: b.is_active,
+          is_accepting_orders: b.is_accepting_orders,
+          working_hours: {
+            open: b.working_hours?.from ?? '',
+            close: b.working_hours?.to ?? '',
+          },
+        }));
+        if (this.branches.length && this.selectedZoneBranchId === null) {
+          this.selectedZoneBranchId = this.branches[0].id;
+          this.loadZones();
+        }
+        this.loading = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.loading = false;
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  loadZones(): void {
+    if (!this.selectedZoneBranchId) return;
+    this.zonesLoading = true;
+    this.api.getMerchantBranchZones(this.currentStore.id, this.selectedZoneBranchId).subscribe({
+      next: (data) => {
+        this.branchZones = data.zones.map((z) => ({
+          id: z.zone_id,
+          name: z.zone_name,
+          fee: parseFloat(z.delivery_fee),
+          is_served: z.is_served,
+        }));
+        this.zonesLoading = false;
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.actionError = err?.message || 'تعذر تحميل أسعار المناطق';
+        this.zonesLoading = false;
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  saveZoneFees() {
+    if (!this.selectedZoneBranchId) return;
+    this.actionError = '';
+    this.actionSuccess = '';
+    const fees = this.branchZones.map((z) => ({
+      zone_id: z.id,
+      delivery_fee: Number(z.fee) || 0,
+      is_served: !!z.is_served,
+    }));
+    this.api.saveMerchantBranchZones(this.currentStore.id, this.selectedZoneBranchId, fees).subscribe({
+      next: () => {
+        this.actionSuccess = 'تم حفظ وتحديث أسعار التوصيل لمناطق قنا بنجاح';
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.actionError = err?.message || 'تعذر حفظ أسعار التوصيل';
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  private loadProducts(): void {
+    this.api.getMerchantProducts(this.currentStore.id).subscribe({
+      next: (products) => {
+        this.products = products.map((pr) => ({
+          id: pr.id,
+          name: pr.name,
+          categoryName: pr.category?.name ?? 'عام',
+          price: parseFloat(pr.price),
+          description: pr.description ?? '',
+          is_available: pr.is_available,
+        }));
+        this.cdr.markForCheck();
+      },
+      error: () => this.cdr.markForCheck(),
+    });
+  }
+
+  loadOrders(): void {
+    this.api
+      .getMerchantOrders(this.currentStore.id, undefined, this.selectedBranchFilter)
+      .subscribe({
+        next: (data) => {
+          const branchNames = new Map(this.branches.map((b: any) => [b.id, b.name]));
+          this.orders = data.orders.map((o) => this.toViewOrder(o, branchNames));
+          if (data.play_audio_alert && this.soundEnabled()) {
+            this.playChime();
+          }
+          this.loading = false;
+          this.cdr.markForCheck();
+        },
+        error: (err: { message?: string }) => {
+          this.loadError = err?.message || 'تعذر تحميل الطلبات';
+          this.loading = false;
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  private toViewOrder(o: any, branchNames: Map<number, string>): any {
+    return {
+      id: o.id,
+      orderNumber: o.order_number,
+      branchId: o.branch_id,
+      branchName: o.branch?.name ?? branchNames.get(o.branch_id) ?? '',
+      customerName: o.customer_name,
+      customerPhone: o.customer_phone,
+      deliveryAddress:
+        o.delivery_latitude != null && o.delivery_longitude != null
+          ? `${o.delivery_latitude}, ${o.delivery_longitude}`
+          : '',
+      zoneName: o.zone?.name ?? '',
+      notes: o.customer_notes ?? '',
+      status: o.status,
+      timeAgo: this.formatTimeAgo(o.created_at),
+      itemsTotal: parseFloat(o.items_total),
+      deliveryFee: parseFloat(o.delivery_fee),
+      grandTotal: parseFloat(o.grand_total),
+      items: (o.items ?? []).map((i: any) => ({
+        name: i.product_name,
+        quantity: i.quantity,
+        price: parseFloat(i.unit_price),
+      })),
+    };
+  }
+
+  private formatTimeAgo(iso: string): string {
+    const then = new Date(iso).getTime();
+    if (Number.isNaN(then)) return '';
+    const minutes = Math.max(0, Math.round((Date.now() - then) / 60000));
+    if (minutes < 1) return 'الآن';
+    if (minutes < 60) return `منذ ${minutes} دقيقة`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `منذ ${hours} ساعة`;
+    return `منذ ${Math.floor(hours / 24)} يوم`;
+  }
 
   getBranchNewOrdersCount(branchId: number): number {
     return this.orders.filter((o) => o.branchId === branchId && o.status === 'new').length;
   }
 
   toggleBranchReceiving(branch: any) {
-    branch.is_accepting_orders = !branch.is_accepting_orders;
+    const next = !branch.is_accepting_orders;
+    branch.is_accepting_orders = next;
+    this.api.updateMerchantBranch(this.currentStore.id, branch.id, { is_accepting_orders: next }).subscribe({
+      next: (b) => {
+        branch.is_accepting_orders = b.is_accepting_orders;
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        branch.is_accepting_orders = !next;
+        this.actionError = err?.message || 'تعذر تحديث حالة الفرع';
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   newOrdersCount() {
@@ -1752,7 +1851,7 @@ export class MerchantDashboardComponent {
 
   getStatusLabel(status: string): string {
     const map: Record<string, string> = {
-      new: 'طلب جديد 🔔',
+      new: 'طلب جديد ',
       accepted: 'تم القبول',
       preparing: 'جاري التحضير بالمطبخ',
       out_for_delivery: 'خرج للتوصيل مع مندوب المتجر',
@@ -1764,7 +1863,19 @@ export class MerchantDashboardComponent {
   }
 
   toggleReceiving() {
-    this.currentStore.is_accepting_orders = !this.currentStore.is_accepting_orders;
+    const next = !this.currentStore.is_accepting_orders;
+    this.currentStore.is_accepting_orders = next;
+    this.api.updateMerchantStore(this.currentStore.id, { is_accepting_orders: next }).subscribe({
+      next: (s) => {
+        this.currentStore.is_accepting_orders = s.is_accepting_orders;
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.currentStore.is_accepting_orders = !next;
+        this.actionError = err?.message || 'تعذر تحديث حالة المتجر';
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   toggleSound() {
@@ -1794,7 +1905,17 @@ export class MerchantDashboardComponent {
   }
 
   updateOrderStatus(order: any, nextStatus: string) {
-    order.status = nextStatus;
+    this.actionError = '';
+    this.api.updateMerchantOrderStatus(this.currentStore.id, order.id, nextStatus).subscribe({
+      next: () => {
+        order.status = nextStatus;
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.actionError = err?.message || 'تعذر تحديث حالة الطلب';
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   openRejectModal(order: any) {
@@ -1803,42 +1924,122 @@ export class MerchantDashboardComponent {
 
   confirmOrderRejection() {
     const ord = this.selectedOrderForRejection();
-    if (ord) {
-      ord.status = 'rejected';
-      this.selectedOrderForRejection.set(null);
-    }
+    if (!ord) return;
+    this.actionError = '';
+    this.api
+      .updateMerchantOrderStatus(this.currentStore.id, ord.id, 'rejected', this.rejectionReason)
+      .subscribe({
+        next: () => {
+          ord.status = 'rejected';
+          this.selectedOrderForRejection.set(null);
+          this.cdr.markForCheck();
+        },
+        error: (err: { message?: string }) => {
+          this.actionError = err?.message || 'تعذر رفض الطلب';
+          this.selectedOrderForRejection.set(null);
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   toggleProductAvailability(product: any) {
-    product.is_available = !product.is_available;
+    const next = !product.is_available;
+    product.is_available = next;
+    this.api.toggleMerchantProductAvailability(this.currentStore.id, product.id).subscribe({
+      next: (pr) => {
+        product.is_available = pr.is_available;
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        product.is_available = !next;
+        this.actionError = err?.message || 'تعذر تحديث حالة الصنف';
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   editProduct(product: any) {
     const newPrice = prompt(`تعديل سعر ${product.name} (ج.م):`, product.price.toString());
     if (newPrice && !isNaN(Number(newPrice))) {
-      product.price = Number(newPrice);
+      const price = Number(newPrice);
+      this.api.updateMerchantProduct(this.currentStore.id, product.id, { price }).subscribe({
+        next: () => {
+          product.price = price;
+          this.cdr.markForCheck();
+        },
+        error: (err: { message?: string }) => {
+          this.actionError = err?.message || 'تعذر تعديل السعر';
+          this.cdr.markForCheck();
+        },
+      });
     }
   }
 
   saveNewProduct() {
     if (this.newProduct.name && this.newProduct.price) {
-      this.products.unshift({
-        id: Date.now(),
-        name: this.newProduct.name,
-        categoryName: 'عام',
-        price: Number(this.newProduct.price),
-        description: this.newProduct.description,
-        is_available: true,
-      });
-      this.newProduct = { name: '', price: null, description: '' };
-      this.showNewProductModal.set(false);
+      this.actionError = '';
+      this.api
+        .createMerchantProduct(this.currentStore.id, {
+          name: this.newProduct.name,
+          price: Number(this.newProduct.price),
+          description: this.newProduct.description,
+        })
+        .subscribe({
+          next: (pr) => {
+            this.products.unshift({
+              id: pr.id,
+              name: pr.name,
+              categoryName: pr.category?.name ?? 'عام',
+              price: parseFloat(pr.price),
+              description: pr.description ?? '',
+              is_available: pr.is_available,
+            });
+            this.newProduct = { name: '', price: null, description: '' };
+            this.showNewProductModal.set(false);
+            this.cdr.markForCheck();
+          },
+          error: (err: { message?: string }) => {
+            this.actionError = err?.message || 'تعذر إضافة الصنف';
+            this.cdr.markForCheck();
+          },
+        });
     }
   }
 
   // AI Methods
+  private loadMenuDrafts(): void {
+    this.api.getMerchantMenuDrafts(this.currentStore.id).subscribe({
+      next: (drafts) => {
+        this.menuDrafts.set(
+          drafts.map((d: any) => ({
+            id: d.id,
+            title: d.title ?? `مسودة منيو #${d.id}`,
+            created_at: d.created_at ? this.formatTimeAgo(d.created_at) : '',
+            status: d.status,
+            items: (d.items ?? []).map((i: any) => ({
+              id: i.id,
+              name: i.name,
+              category_name: i.category_name ?? 'عام',
+              price: typeof i.price === 'string' ? parseFloat(i.price) : i.price,
+              is_ambiguous: !!i.is_ambiguous,
+              is_accepted: i.status === 'accepted' || !!i.is_accepted,
+            })),
+          })),
+        );
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        // AI drafts unavailable (provider not configured): show empty state honestly.
+        this.menuDrafts.set([]);
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
   onMenuFileSelected(event: any) {
     const file = event.target.files?.[0];
     if (file) {
+      this.menuImageFile = file;
       this.menuImageFileName.set(file.name);
       const reader = new FileReader();
       reader.onload = (e: any) => {
@@ -1853,44 +2054,40 @@ export class MerchantDashboardComponent {
   }
 
   extractMenuFromImage() {
+    if (!this.menuImageFile) return;
     this.isExtractingMenu.set(true);
-    setTimeout(() => {
-      this.isExtractingMenu.set(false);
-      const newDraft = {
-        id: Date.now(),
-        title: `مسودة منيو (${this.menuImageFileName() || 'صورة منيو'})`,
-        created_at: 'الآن',
-        status: 'draft',
-        items: [
+    this.actionError = '';
+    this.api.extractMerchantMenu(this.currentStore.id, this.menuImageFile).subscribe({
+      next: (draft: any) => {
+        this.isExtractingMenu.set(false);
+        this.menuDrafts.update((drafts) => [
           {
-            id: Date.now() + 1,
-            name: 'كباب حلة صعيدي',
-            category_name: 'طواجن',
-            price: 135.0,
-            is_ambiguous: false,
-            is_accepted: true,
+            id: draft.id,
+            title: draft.title ?? `مسودة منيو (${this.menuImageFileName() || 'صورة منيو'})`,
+            created_at: 'الآن',
+            status: draft.status ?? 'draft',
+            items: (draft.items ?? []).map((i: any) => ({
+              id: i.id,
+              name: i.name,
+              category_name: i.category_name ?? 'عام',
+              price: typeof i.price === 'string' ? parseFloat(i.price) : i.price,
+              is_ambiguous: !!i.is_ambiguous,
+              is_accepted: i.status === 'accepted' || !!i.is_accepted,
+            })),
           },
-          {
-            id: Date.now() + 2,
-            name: 'شوربة لسان عصفور بلدي',
-            category_name: 'شوربة',
-            price: 25.0,
-            is_ambiguous: false,
-            is_accepted: true,
-          },
-          {
-            id: Date.now() + 3,
-            name: 'حمام محشي أرز بالخلطة',
-            category_name: 'مشويات',
-            price: 150.0,
-            is_ambiguous: true,
-            is_accepted: false,
-          },
-        ],
-      };
-      this.menuDrafts.update((drafts) => [newDraft, ...drafts]);
-      alert('تم استخراج مسودة المنيو بنجاح! يرجى مراجعة وتدقيق الأسعار قبل الاستيراد.');
-    }, 600);
+          ...drafts,
+        ]);
+        this.menuImageFile = null;
+        this.menuImagePreview.set(null);
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.isExtractingMenu.set(false);
+        this.actionError =
+          err?.message || 'تعذر استخراج المنيو. تأكد من إعداد مزود الذكاء الاصطناعي';
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   removeDraftItem(draft: any, item: any) {
@@ -1900,48 +2097,67 @@ export class MerchantDashboardComponent {
   importAcceptedDraftItems(draft: any) {
     const acceptedItems = draft.items.filter((i: any) => i.is_accepted);
     if (acceptedItems.length === 0) {
-      alert('يرجى اعتماد صنف واحد على الأقل للاستيراد');
+      this.actionError = 'يرجى اعتماد صنف واحد على الأقل للاستيراد';
+      this.cdr.markForCheck();
       return;
     }
-
-    acceptedItems.forEach((item: any) => {
-      this.products.unshift({
-        id: Date.now() + Math.floor(Math.random() * 1000),
-        name: item.name,
-        categoryName: item.category_name,
-        price: Number(item.price),
-        description: 'مستورد من مسودة المنيو بالذكاء الاصطناعي',
-        is_available: true,
-      });
+    this.actionError = '';
+    this.api.importMerchantMenuDraft(this.currentStore.id, draft.id).subscribe({
+      next: () => {
+        draft.status = 'imported';
+        this.actionSuccess = 'تم استيراد الأصناف المعتمدة إلى قائمة منتجات متجرك';
+        this.loadProducts();
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.actionError = err?.message || 'تعذر استيراد المسودة';
+        this.cdr.markForCheck();
+      },
     });
-
-    draft.status = 'imported';
-    alert(`تم استيراد ${acceptedItems.length} صنف بنجاح إلى قائمة منتجات متجرك!`);
   }
 
   generateProductImage() {
     if (!this.imageGenProductName) return;
     this.isGeneratingImage.set(true);
-    setTimeout(() => {
-      this.isGeneratingImage.set(false);
-      this.generatedImage.set({
-        name: this.imageGenProductName,
-        url:
-          'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"><rect width="400" height="300" fill="%230E5A6B"/><text x="50%25" y="45%25" dominant-baseline="middle" text-anchor="middle" fill="%23F5B335" font-size="20" font-family="sans-serif">صورة توضيحية بالذكاء الاصطناعي</text><text x="50%25" y="60%25" dominant-baseline="middle" text-anchor="middle" fill="%23FFFFFF" font-size="16" font-family="sans-serif">' +
-          encodeURIComponent(this.imageGenProductName) +
-          '</text></svg>',
-        is_illustrative: true,
-        is_approved: false,
+    this.actionError = '';
+    this.api
+      .generateMerchantProductImage(this.currentStore.id, this.imageGenProductName, this.imageGenCategory)
+      .subscribe({
+        next: (result: any) => {
+          this.isGeneratingImage.set(false);
+          this.generatedImage.set({
+            id: result?.id ?? result?.image_id ?? null,
+            name: this.imageGenProductName,
+            url: result?.url ?? result?.image_url ?? '',
+            is_illustrative: result?.is_illustrative ?? true,
+            is_approved: result?.is_approved ?? false,
+          });
+          this.cdr.markForCheck();
+        },
+        error: (err: { message?: string }) => {
+          this.isGeneratingImage.set(false);
+          this.generatedImage.set(null);
+          this.actionError =
+            err?.message || 'تعذر توليد الصورة. تأكد من إعداد مزود الذكاء الاصطناعي';
+          this.cdr.markForCheck();
+        },
       });
-    }, 500);
   }
 
   approveGeneratedImage() {
     const img = this.generatedImage();
-    if (img) {
-      img.is_approved = true;
-      this.generatedImage.set({ ...img });
-      alert(`تم اعتماد الصورة التوضيحية لمنتج "${img.name}" بنجاح!`);
-    }
+    if (!img || !img.id) return;
+    this.actionError = '';
+    this.api.approveMerchantProductImage(this.currentStore.id, img.id).subscribe({
+      next: () => {
+        this.generatedImage.set({ ...img, is_approved: true });
+        this.actionSuccess = 'تم اعتماد الصورة التوضيحية للمنتج';
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.actionError = err?.message || 'تعذر اعتماد الصورة';
+        this.cdr.markForCheck();
+      },
+    });
   }
 }
