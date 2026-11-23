@@ -17,7 +17,8 @@ RUN docker-php-ext-install \
     intl \
     opcache \
     zip \
-    pcntl
+    pcntl \
+    bcmath
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
@@ -40,7 +41,7 @@ ENV APP_ENV=production \
     CACHE_STORE=array \
     VIEW_COMPILED_PATH=/tmp/storage/framework/views
 
-# Vercel containers serve HTTP on port 80 by default
+# Vercel containers serve HTTP on port 80 or $PORT
 EXPOSE 80
 
-CMD ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]
+CMD ["sh", "-c", "mkdir -p /tmp/storage/framework/cache /tmp/storage/framework/sessions /tmp/storage/framework/views /tmp/storage/logs && frankenphp php-server --root public/ --listen :${PORT:-80}"]

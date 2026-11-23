@@ -1,8 +1,35 @@
 {
+  "services": {
+    "frontend": {
+      "root": "frontend",
+      "framework": "angular",
+      "buildCommand": "npm run build",
+      "outputDirectory": "dist/frontend/browser",
+      "rewrites": [
+        {
+          "source": "/(.*)",
+          "destination": "/index.html"
+        }
+      ]
+    },
+    "backend": {
+      "runtime": "container",
+      "root": "backend",
+      "entrypoint": "Dockerfile.vercel"
+    }
+  },
   "rewrites": [
     {
-      "source": "/((?!api/)(?!.*\\.).*)",
-      "destination": "/"
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "frontend"
+      }
     }
   ]
 }
