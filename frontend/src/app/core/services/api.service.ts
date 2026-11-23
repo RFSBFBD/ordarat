@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Observable, catchError, map, throwError } from 'rxjs';
+import { Observable, TimeoutError, catchError, map, throwError, timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 export interface ApiError {
@@ -177,34 +177,50 @@ export class ApiService {
   private readonly http = inject(HttpClient);
   private readonly base = environment.apiUrl;
 
+  /** Hard ceiling for any single API call so pages never hang on a dead backend. */
+  private static readonly REQUEST_TIMEOUT_MS = 20000;
+
+  /** Shared response pipeline: timeout, unwrap the envelope, normalize errors. */
+  private unwrap<T>(): (source: Observable<Envelope<T>>) => Observable<T> {
+    return (source) =>
+      source.pipe(
+        timeout(ApiService.REQUEST_TIMEOUT_MS),
+        map((r) => r.data),
+        catchError((e) => throwError(() => toApiError(e))),
+      );
+  }
+
   getStores(): Observable<ApiStore[]> {
     return this.http
       .get<Envelope<ApiStore[]>>(`${this.base}/stores`)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<ApiStore[]>());
   }
 
   getStore(id: number): Observable<ApiStoreDetail> {
     return this.http
       .get<Envelope<ApiStoreDetail>>(`${this.base}/stores/${id}`)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<ApiStoreDetail>());
   }
 
   quote(req: QuoteRequest): Observable<QuoteResponse> {
     return this.http
       .post<Envelope<QuoteResponse>>(`${this.base}/checkout/quote`, req)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<QuoteResponse>());
   }
 
   checkout(req: CheckoutRequest): Observable<ApiOrder> {
     return this.http
-      .post<Envelope<ApiOrder>>(`${this.base}/checkout`, req)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .post<Envelope<ApiOrder>>(`${this.base}/checkout`, req, {
+        headers: { 'X-Blocking-Loading': '1' },
+      })
+      .pipe(this.unwrap<ApiOrder>());
   }
 
-  getOrder(id: number): Observable<ApiOrder> {
+  getOrder(id: number, opts?: { silent?: boolean }): Observable<ApiOrder> {
+    const headers = opts?.silent ? { 'X-Silent-Loading': '1' } : undefined;
     return this.http
-      .get<Envelope<ApiOrder>>(`${this.base}/orders/${id}`)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .get<Envelope<ApiOrder>>(`${this.base}/orders/${id}`, headers ? { headers } : {})
+      .pipe(this.unwrap<ApiOrder>());
   }
 
   // ---- Unified sign-in onboarding ----
@@ -212,25 +228,32 @@ export class ApiService {
   getOnboardingStatus(): Observable<OnboardingStatus> {
     return this.http
       .get<Envelope<OnboardingStatus>>(`${this.base}/onboarding/status`)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<OnboardingStatus>());
   }
 
-  completeCustomerOnboarding(req: CustomerOnboardingRequest): Observable<{ profile_complete: boolean }> {
+  completeCustomerOnboarding(
+    req: CustomerOnboardingRequest,
+  ): Observable<{ profile_complete: boolean }> {
     return this.http
       .post<Envelope<{ profile_complete: boolean }>>(`${this.base}/onboarding/customer`, req)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<{ profile_complete: boolean }>());
   }
 
   skipOnboarding(): Observable<{ onboarding_state: string }> {
     return this.http
       .post<Envelope<{ onboarding_state: string }>>(`${this.base}/onboarding/skip`, {})
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<{ onboarding_state: string }>());
   }
 
-  submitMerchantApplication(req: MerchantApplicationRequest): Observable<{ id: number; status: string }> {
+  submitMerchantApplication(
+    req: MerchantApplicationRequest,
+  ): Observable<{ id: number; status: string }> {
     return this.http
-      .post<Envelope<{ id: number; status: string }>>(`${this.base}/onboarding/merchant-application`, req)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .post<Envelope<{ id: number; status: string }>>(
+        `${this.base}/onboarding/merchant-application`,
+        req,
+      )
+      .pipe(this.unwrap<{ id: number; status: string }>());
   }
 
   // ---- Admin: business join applications ----
@@ -238,20 +261,25 @@ export class ApiService {
   getAdminMerchantApplications(status?: string): Observable<AdminMerchantApplication[]> {
     const params = status ? `?status=${encodeURIComponent(status)}` : '';
     return this.http
-      .get<Envelope<AdminMerchantApplication[]>>(`${this.base}/admin/merchant-applications${params}`)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .get<Envelope<AdminMerchantApplication[]>>(
+        `${this.base}/admin/merchant-applications${params}`,
+      )
+      .pipe(this.unwrap<AdminMerchantApplication[]>());
   }
 
   approveMerchantApplication(id: number): Observable<{ store_id: number }> {
     return this.http
-      .post<Envelope<{ store_id: number }>>(`${this.base}/admin/merchant-applications/${id}/approve`, {})
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .post<Envelope<{ store_id: number }>>(
+        `${this.base}/admin/merchant-applications/${id}/approve`,
+        {},
+      )
+      .pipe(this.unwrap<{ store_id: number }>());
   }
 
   rejectMerchantApplication(id: number, note: string): Observable<unknown> {
     return this.http
       .post<Envelope<unknown>>(`${this.base}/admin/merchant-applications/${id}/reject`, { note })
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<unknown>());
   }
 
   // ---- Branch manager dashboard endpoints (role: branch_manager) ----
@@ -259,14 +287,14 @@ export class ApiService {
   getBranchDashboard(): Observable<BranchDashboardData> {
     return this.http
       .get<Envelope<BranchDashboardData>>(`${this.base}/branch/dashboard`)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<BranchDashboardData>());
   }
 
   getBranchOrders(status?: string): Observable<BranchOrdersData> {
     const params = status ? `?status=${encodeURIComponent(status)}` : '';
     return this.http
       .get<Envelope<BranchOrdersData>>(`${this.base}/branch/orders${params}`)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<BranchOrdersData>());
   }
 
   toggleBranchStatus(isAcceptingOrders: boolean): Observable<BranchStatusData> {
@@ -274,19 +302,16 @@ export class ApiService {
       .patch<Envelope<BranchStatusData>>(`${this.base}/branch/status`, {
         is_accepting_orders: isAcceptingOrders,
       })
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<BranchStatusData>());
   }
 
-  updateBranchOrderStatus(
-    orderId: number,
-    status: string,
-    reason?: string,
-  ): Observable<ApiOrder> {
+  updateBranchOrderStatus(orderId: number, status: string, reason?: string): Observable<ApiOrder> {
     return this.http
-      .patch<
-        Envelope<ApiOrder>
-      >(`${this.base}/branch/orders/${orderId}/status`, { status, reason: reason ?? null })
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .patch<Envelope<ApiOrder>>(`${this.base}/branch/orders/${orderId}/status`, {
+        status,
+        reason: reason ?? null,
+      })
+      .pipe(this.unwrap<ApiOrder>());
   }
 
   // ---- Merchant (store owner) dashboard endpoints (role: merchant) ----
@@ -294,19 +319,22 @@ export class ApiService {
   getMerchantStores(): Observable<MerchantStore[]> {
     return this.http
       .get<Envelope<MerchantStore[]>>(`${this.base}/merchant/stores`)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<MerchantStore[]>());
   }
 
-  updateMerchantStore(storeId: number, payload: Record<string, unknown>): Observable<MerchantStore> {
+  updateMerchantStore(
+    storeId: number,
+    payload: Record<string, unknown>,
+  ): Observable<MerchantStore> {
     return this.http
       .put<Envelope<MerchantStore>>(`${this.base}/merchant/stores/${storeId}`, payload)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<MerchantStore>());
   }
 
   getMerchantBranches(storeId: number): Observable<MerchantBranch[]> {
     return this.http
       .get<Envelope<MerchantBranch[]>>(`${this.base}/merchant/stores/${storeId}/branches`)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<MerchantBranch[]>());
   }
 
   updateMerchantBranch(
@@ -315,18 +343,19 @@ export class ApiService {
     payload: Record<string, unknown>,
   ): Observable<MerchantBranch> {
     return this.http
-      .put<
-        Envelope<MerchantBranch>
-      >(`${this.base}/merchant/stores/${storeId}/branches/${branchId}`, payload)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .put<Envelope<MerchantBranch>>(
+        `${this.base}/merchant/stores/${storeId}/branches/${branchId}`,
+        payload,
+      )
+      .pipe(this.unwrap<MerchantBranch>());
   }
 
   getMerchantBranchZones(storeId: number, branchId: number): Observable<MerchantZonesData> {
     return this.http
-      .get<
-        Envelope<MerchantZonesData>
-      >(`${this.base}/merchant/stores/${storeId}/branches/${branchId}/zones`)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .get<Envelope<MerchantZonesData>>(
+        `${this.base}/merchant/stores/${storeId}/branches/${branchId}/zones`,
+      )
+      .pipe(this.unwrap<MerchantZonesData>());
   }
 
   saveMerchantBranchZones(
@@ -335,16 +364,17 @@ export class ApiService {
     fees: Array<{ zone_id: number; delivery_fee: number; is_served: boolean }>,
   ): Observable<unknown> {
     return this.http
-      .put<
-        Envelope<unknown>
-      >(`${this.base}/merchant/stores/${storeId}/branches/${branchId}/zones`, { fees })
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .put<Envelope<unknown>>(
+        `${this.base}/merchant/stores/${storeId}/branches/${branchId}/zones`,
+        { fees },
+      )
+      .pipe(this.unwrap<unknown>());
   }
 
   getMerchantProducts(storeId: number): Observable<MerchantProduct[]> {
     return this.http
       .get<Envelope<MerchantProduct[]>>(`${this.base}/merchant/stores/${storeId}/products`)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<MerchantProduct[]>());
   }
 
   createMerchantProduct(
@@ -353,7 +383,7 @@ export class ApiService {
   ): Observable<MerchantProduct> {
     return this.http
       .post<Envelope<MerchantProduct>>(`${this.base}/merchant/stores/${storeId}/products`, payload)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<MerchantProduct>());
   }
 
   updateMerchantProduct(
@@ -362,28 +392,37 @@ export class ApiService {
     payload: Record<string, unknown>,
   ): Observable<MerchantProduct> {
     return this.http
-      .put<
-        Envelope<MerchantProduct>
-      >(`${this.base}/merchant/stores/${storeId}/products/${productId}`, payload)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .put<Envelope<MerchantProduct>>(
+        `${this.base}/merchant/stores/${storeId}/products/${productId}`,
+        payload,
+      )
+      .pipe(this.unwrap<MerchantProduct>());
   }
 
-  toggleMerchantProductAvailability(storeId: number, productId: number): Observable<MerchantProduct> {
+  toggleMerchantProductAvailability(
+    storeId: number,
+    productId: number,
+  ): Observable<MerchantProduct> {
     return this.http
-      .patch<
-        Envelope<MerchantProduct>
-      >(`${this.base}/merchant/stores/${storeId}/products/${productId}/toggle-availability`, {})
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .patch<Envelope<MerchantProduct>>(
+        `${this.base}/merchant/stores/${storeId}/products/${productId}/toggle-availability`,
+        {},
+      )
+      .pipe(this.unwrap<MerchantProduct>());
   }
 
-  getMerchantOrders(storeId: number, status?: string, branchId?: number | string): Observable<MerchantOrdersData> {
+  getMerchantOrders(
+    storeId: number,
+    status?: string,
+    branchId?: number | string,
+  ): Observable<MerchantOrdersData> {
     const params: string[] = [];
     if (status) params.push(`status=${encodeURIComponent(status)}`);
     if (branchId !== undefined && branchId !== 'all') params.push(`branch_id=${branchId}`);
     const qs = params.length ? `?${params.join('&')}` : '';
     return this.http
       .get<Envelope<MerchantOrdersData>>(`${this.base}/merchant/stores/${storeId}/orders${qs}`)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<MerchantOrdersData>());
   }
 
   updateMerchantOrderStatus(
@@ -393,24 +432,28 @@ export class ApiService {
     reason?: string,
   ): Observable<ApiOrder> {
     return this.http
-      .patch<
-        Envelope<ApiOrder>
-      >(`${this.base}/merchant/stores/${storeId}/orders/${orderId}/status`, { status, reason: reason ?? null })
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .patch<Envelope<ApiOrder>>(
+        `${this.base}/merchant/stores/${storeId}/orders/${orderId}/status`,
+        { status, reason: reason ?? null },
+      )
+      .pipe(this.unwrap<ApiOrder>());
   }
 
   getMerchantMenuDrafts(storeId: number): Observable<MerchantMenuDraft[]> {
     return this.http
       .get<Envelope<MerchantMenuDraft[]>>(`${this.base}/merchant/stores/${storeId}/ai/menu-drafts`)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<MerchantMenuDraft[]>());
   }
 
   extractMerchantMenu(storeId: number, image: File): Observable<MerchantMenuDraft> {
     const form = new FormData();
     form.append('image', image);
     return this.http
-      .post<Envelope<MerchantMenuDraft>>(`${this.base}/merchant/stores/${storeId}/ai/ocr-menu`, form)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .post<Envelope<MerchantMenuDraft>>(
+        `${this.base}/merchant/stores/${storeId}/ai/ocr-menu`,
+        form,
+      )
+      .pipe(this.unwrap<MerchantMenuDraft>());
   }
 
   generateMerchantProductImage(
@@ -419,39 +462,37 @@ export class ApiService {
     categoryName?: string,
   ): Observable<unknown> {
     return this.http
-      .post<
-        Envelope<unknown>
-      >(`${this.base}/merchant/stores/${storeId}/ai/generate-product-image`, { product_name: productName, category_name: categoryName ?? null })
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .post<Envelope<unknown>>(
+        `${this.base}/merchant/stores/${storeId}/ai/generate-product-image`,
+        { product_name: productName, category_name: categoryName ?? null },
+      )
+      .pipe(this.unwrap<unknown>());
   }
 
   // ---- Admin dashboard endpoints (role: admin) ----
 
   getAdminStores(): Observable<any[]> {
-    return this.http
-      .get<Envelope<any[]>>(`${this.base}/admin/stores`)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+    return this.http.get<Envelope<any[]>>(`${this.base}/admin/stores`).pipe(this.unwrap<any[]>());
   }
 
   toggleAdminStoreStatus(storeId: number, isActive: boolean, reason: string): Observable<any> {
     return this.http
-      .patch<
-        Envelope<any>
-      >(`${this.base}/admin/stores/${storeId}/status`, { is_active: isActive, reason })
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .patch<Envelope<any>>(`${this.base}/admin/stores/${storeId}/status`, {
+        is_active: isActive,
+        reason,
+      })
+      .pipe(this.unwrap<any>());
   }
 
   getAdminOrders(status?: string): Observable<any> {
     const qs = status ? `?status=${encodeURIComponent(status)}` : '';
-    return this.http
-      .get<Envelope<any>>(`${this.base}/admin/orders${qs}`)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+    return this.http.get<Envelope<any>>(`${this.base}/admin/orders${qs}`).pipe(this.unwrap<any>());
   }
 
   overrideAdminOrderStatus(orderId: number, status: string, reason: string): Observable<any> {
     return this.http
       .patch<Envelope<any>>(`${this.base}/admin/orders/${orderId}/status`, { status, reason })
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<any>());
   }
 
   getAdminCustomers(status?: string, search?: string): Observable<any[]> {
@@ -461,19 +502,19 @@ export class ApiService {
     const qs = params.length ? `?${params.join('&')}` : '';
     return this.http
       .get<Envelope<any[]>>(`${this.base}/admin/customers${qs}`)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<any[]>());
   }
 
   toggleAdminCustomerStatus(userId: number, status: string, reason: string): Observable<any> {
     return this.http
       .patch<Envelope<any>>(`${this.base}/admin/customers/${userId}/status`, { status, reason })
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<any>());
   }
 
   getAdminBranchManagers(): Observable<any[]> {
     return this.http
       .get<Envelope<any[]>>(`${this.base}/admin/branch-managers`)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<any[]>());
   }
 
   createAdminBranchManager(payload: {
@@ -484,99 +525,94 @@ export class ApiService {
   }): Observable<any> {
     return this.http
       .post<Envelope<any>>(`${this.base}/admin/branch-managers`, payload)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<any>());
   }
 
   toggleAdminBranchManagerStatus(userId: number, status: string, reason: string): Observable<any> {
     return this.http
-      .patch<
-        Envelope<any>
-      >(`${this.base}/admin/branch-managers/${userId}/status`, { status, reason })
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .patch<Envelope<any>>(`${this.base}/admin/branch-managers/${userId}/status`, {
+        status,
+        reason,
+      })
+      .pipe(this.unwrap<any>());
   }
 
   getAdminSettings(): Observable<any> {
-    return this.http
-      .get<Envelope<any>>(`${this.base}/admin/settings`)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+    return this.http.get<Envelope<any>>(`${this.base}/admin/settings`).pipe(this.unwrap<any>());
   }
 
   saveAdminSettings(payload: Record<string, unknown>): Observable<any> {
     return this.http
       .put<Envelope<any>>(`${this.base}/admin/settings`, payload)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<any>());
   }
 
   getAdminAnalytics(period: string): Observable<any> {
     return this.http
       .get<Envelope<any>>(`${this.base}/admin/analytics?period=${encodeURIComponent(period)}`)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<any>());
   }
 
   getAdminAiSettings(): Observable<any> {
-    return this.http
-      .get<Envelope<any>>(`${this.base}/admin/ai/settings`)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+    return this.http.get<Envelope<any>>(`${this.base}/admin/ai/settings`).pipe(this.unwrap<any>());
   }
 
   saveAdminAiSettings(fnType: string, payload: Record<string, unknown>): Observable<any> {
     return this.http
       .put<Envelope<any>>(`${this.base}/admin/ai/settings/${fnType}`, payload)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<any>());
   }
 
   testAdminAiConnection(fnType: string): Observable<any> {
     return this.http
       .post<Envelope<any>>(`${this.base}/admin/ai/test-connection`, { function_type: fnType })
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<any>());
   }
 
   toggleAdminAiKillSwitch(enable: boolean): Observable<any> {
     return this.http
       .patch<Envelope<any>>(`${this.base}/admin/ai/kill-switch`, { enabled: enable })
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<any>());
   }
 
   getAdminAiUsageLogs(): Observable<any> {
     return this.http
       .get<Envelope<any>>(`${this.base}/admin/ai/usage-logs`)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<any>());
   }
 
   getAdminAiStoresQuota(): Observable<any> {
-    return this.http
-      .get<Envelope<any>>(`${this.base}/admin/ai/stores`)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+    return this.http.get<Envelope<any>>(`${this.base}/admin/ai/stores`).pipe(this.unwrap<any>());
   }
 
   toggleAdminStoreFreeze(storeId: number, freeze: boolean, reason: string): Observable<any> {
     return this.http
-      .patch<
-        Envelope<any>
-      >(`${this.base}/admin/ai/stores/${storeId}/freeze`, { freeze, reason })
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .patch<Envelope<any>>(`${this.base}/admin/ai/stores/${storeId}/freeze`, { freeze, reason })
+      .pipe(this.unwrap<any>());
   }
 
   analyzeAdminPlatform(payload: Record<string, unknown>): Observable<any> {
     return this.http
       .post<Envelope<any>>(`${this.base}/admin/ai/analyze-platform`, payload)
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .pipe(this.unwrap<any>());
   }
 
   approveMerchantProductImage(storeId: number, imageId: number): Observable<unknown> {
     return this.http
-      .post<
-        Envelope<unknown>
-      >(`${this.base}/merchant/stores/${storeId}/ai/images/${imageId}/approve`, {})
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .post<Envelope<unknown>>(
+        `${this.base}/merchant/stores/${storeId}/ai/images/${imageId}/approve`,
+        {},
+      )
+      .pipe(this.unwrap<unknown>());
   }
 
   importMerchantMenuDraft(storeId: number, draftId: number): Observable<unknown> {
     return this.http
-      .post<
-        Envelope<unknown>
-      >(`${this.base}/merchant/stores/${storeId}/ai/menu-drafts/${draftId}/import`, {})
-      .pipe(map((r) => r.data), catchError((e) => throwError(() => toApiError(e))));
+      .post<Envelope<unknown>>(
+        `${this.base}/merchant/stores/${storeId}/ai/menu-drafts/${draftId}/import`,
+        {},
+      )
+      .pipe(this.unwrap<unknown>());
   }
 }
 
@@ -685,25 +721,40 @@ export interface MerchantMenuDraft {
 
 /** Maps Laravel's error envelope (and network failures) to a display-safe shape. */
 export function toApiError(err: unknown): ApiError {
+  if (err instanceof TimeoutError) {
+    return {
+      kind: 'network',
+      status: 0,
+      message: 'السيرفر خد وقت طويل ومجاوبش. تأكد من النت وحاول تاني',
+    };
+  }
   if (err instanceof HttpErrorResponse) {
-    // The API answered but not with JSON (e.g. a static SPA fallback page):
-    // treat it as "backend not wired" instead of hanging on a loader.
-    if (err.status === 200 || (err.status === 0 && !(err.error instanceof ProgressEvent))) {
+    const body = err.error as { error?: { code?: string; message?: string } } | string | null;
+    // The API answered with a non-JSON body (a static SPA fallback page or a
+    // proxy error page): the service is not reachable as an API, whatever the
+    // status code says. This is a server-side problem, not the user's network.
+    const isNonJsonBody = typeof body === 'string' && /^\s*</.test(body);
+    if (
+      err.status === 200 ||
+      (err.status === 0 && !(err.error instanceof ProgressEvent)) ||
+      isNonJsonBody
+    ) {
       return {
         kind: 'network',
         status: err.status,
-        message: 'السيرفر مش متاح دلوقتي. تأكد إن الباك إند شغال وحاول تاني',
+        message: 'خدمة الطلبات مش متاحة دلوقتي من عندنا. جرّب تاني بعد شوية',
       };
     }
     if (err.status === 0) {
       return {
         kind: 'network',
         status: 0,
-        message: 'السيرفر مش متاح دلوقتي. تأكد إن الباك إند شغال وحاول تاني',
+        message: 'مفيش اتصال بالخدمة. تأكد من النت عندك وحاول تاني',
       };
     }
-    const body = err.error as { error?: { code?: string; message?: string } } | null;
-    const message = body?.error?.message || 'حصل خطأ غير متوقع. حاول تاني';
+    const message =
+      (body as { error?: { message?: string } } | null)?.error?.message ||
+      'حصل خطأ غير متوقع. حاول تاني';
     if (err.status === 401 || err.status === 403) {
       return { kind: 'auth', status: err.status, message };
     }

@@ -36,3 +36,28 @@ describe('toApiError', () => {
     expect(err.message.length).toBeGreaterThan(0);
   });
 });
+
+describe('toApiError non-JSON API responses (regression: SPA fallback must not blame the user)', () => {
+  it('classifies an HTML body at 404 as a service-side network failure', () => {
+    const err = toApiError(
+      new HttpErrorResponse({ status: 404, error: '<!doctype html><html><head></head></html>' }),
+    );
+    expect(err.kind).toBe('network');
+    expect(err.message).toContain('مش متاحة');
+    expect(err.message).not.toContain('النت عندك');
+  });
+
+  it('classifies an HTML body at 200 (parse failure) as service unavailable', () => {
+    const err = toApiError(
+      new HttpErrorResponse({ status: 200, error: '<!doctype html><html></html>' }),
+    );
+    expect(err.kind).toBe('network');
+    expect(err.message).toContain('مش متاحة');
+  });
+
+  it('keeps genuine connection loss (status 0) on the user-network message', () => {
+    const err = toApiError(new HttpErrorResponse({ status: 0, error: new ProgressEvent('error') }));
+    expect(err.kind).toBe('network');
+    expect(err.message).toContain('النت عندك');
+  });
+});

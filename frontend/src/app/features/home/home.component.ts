@@ -11,7 +11,10 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
   template: `
     <section class="welcome-section">
       <div class="welcome-card">
-        <div class="home-logo-header" style="display: flex; justify-content: center; margin-bottom: 1.25rem;">
+        <div
+          class="home-logo-header"
+          style="display: flex; justify-content: center; margin-bottom: 1.25rem;"
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 128 128"
@@ -50,6 +53,31 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
             {{ t.customer.startScreen.guestLink }}
           </button>
         </div>
+
+        <!-- Why Ordarat: the three promises that matter to a Qena customer -->
+        <div class="features-strip">
+          <div class="feature-item">
+            <div class="feature-icon"><app-icon name="banknote" [size]="22"></app-icon></div>
+            <div class="feature-text">
+              <strong>كاش عند الاستلام</strong>
+              <span>من غير فيزا ولا محافظ</span>
+            </div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-icon"><app-icon name="bike" [size]="22"></app-icon></div>
+            <div class="feature-text">
+              <strong>توصيل من المحل نفسه</strong>
+              <span>أقرب فرع ليك هو اللي يوصل</span>
+            </div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-icon"><app-icon name="map-pin" [size]="22"></app-icon></div>
+            <div class="feature-text">
+              <strong>جوه قنا بس</strong>
+              <span>عشان الطلب يوصل بسرعة</span>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   `,
@@ -62,6 +90,7 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
         padding: 1.5rem 0;
       }
       .welcome-card {
+        animation: heroIn 0.45s ease-out;
         background: #ffffff;
         border-radius: 16px;
         padding: 2.5rem 2rem;
@@ -87,6 +116,73 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
         grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
         gap: 1.5rem;
         margin-bottom: 2rem;
+      }
+      .action-card {
+        animation: cardIn 0.5s ease-out backwards;
+      }
+      .client-card {
+        animation-delay: 0.12s;
+      }
+      .merchant-card {
+        animation-delay: 0.24s;
+      }
+      .features-strip {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+        margin-top: 0.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--color-border);
+        animation: cardIn 0.5s ease-out 0.36s backwards;
+      }
+      .feature-item {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        text-align: right;
+      }
+      .feature-icon {
+        flex-shrink: 0;
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(14, 90, 107, 0.08);
+        color: var(--color-primary);
+      }
+      .feature-text {
+        display: flex;
+        flex-direction: column;
+      }
+      .feature-text strong {
+        font-size: 0.92rem;
+        color: var(--color-text);
+      }
+      .feature-text span {
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+      }
+      @keyframes heroIn {
+        from {
+          opacity: 0;
+          transform: translateY(14px) scale(0.98);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      @keyframes cardIn {
+        from {
+          opacity: 0;
+          transform: translateY(16px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
       }
       .action-card {
         padding: 1.75rem 1.25rem;

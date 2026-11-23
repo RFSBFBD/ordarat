@@ -15,7 +15,10 @@ import { AuthService } from '../../../core/services/auth.service';
   template: `
     <div class="login-wrapper">
       <div class="login-box">
-        <div class="login-logo-header" style="display: flex; justify-content: center; margin-bottom: 1.25rem;">
+        <div
+          class="login-logo-header"
+          style="display: flex; justify-content: center; margin-bottom: 1.25rem;"
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 128 128"
@@ -73,6 +76,15 @@ import { AuthService } from '../../../core/services/auth.service';
         <div *ngIf="errorMessage" class="error-box">
           {{ errorMessage }}
         </div>
+
+        <button
+          *ngIf="showProfileRetry"
+          class="btn btn-retry-profile"
+          [disabled]="auth.busy()"
+          (click)="retryProfile()"
+        >
+          {{ auth.busy() ? 'بنحاول...' : 'حاول تاني' }}
+        </button>
 
         <p class="guest-note">{{ t.unifiedAuth.guestNote }}</p>
         <button class="btn btn-later" (click)="browseAsGuest()">
@@ -154,6 +166,11 @@ import { AuthService } from '../../../core/services/auth.service';
         color: var(--color-text-muted);
         border: 1px solid var(--color-border);
       }
+      .btn-retry-profile {
+        background: var(--color-accent);
+        color: #1e2a2f;
+        margin-bottom: 1rem;
+      }
       .error-box {
         background: #fff5f5;
         color: var(--color-danger);
@@ -174,12 +191,14 @@ export class LoginComponent implements OnInit {
 
   errorMessage = '';
   deniedMessage = '';
+  showProfileRetry = false;
   private returnUrl: string | null = null;
 
   ngOnInit(): void {
     this.returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
     if (this.route.snapshot.queryParamMap.get('denied') === '1') {
-      this.deniedMessage = 'الصفحة دي محتاجة حساب له صلاحية الوصول ليها. سجّل دخولك ولو حسابك له صلاحية هتوصلها على طول.';
+      this.deniedMessage =
+        'الصفحة دي محتاجة حساب له صلاحية الوصول ليها. سجّل دخولك ولو حسابك له صلاحية هتوصلها على طول.';
     }
 
     // Already signed in: go straight to where the account belongs.
@@ -195,6 +214,14 @@ export class LoginComponent implements OnInit {
     const result = await this.auth.signInWithGoogle();
 
     if (result.ok) {
+      // The Google side passed; if the API could not confirm the profile,
+      // say so instead of silently landing on a half-logged-in home page.
+      if (!this.auth.profile()) {
+        this.errorMessage =
+          'تم تسجيل دخولك بجوجل، بس السيرفر مش بيرد فمش قادرين نكمل حسابك. جرّب تاني بعد شوية.';
+        this.showProfileRetry = true;
+        return;
+      }
       this.router.navigateByUrl(this.auth.postLoginTarget(this.returnUrl));
       return;
     }
@@ -209,6 +236,20 @@ export class LoginComponent implements OnInit {
     }
 
     this.errorMessage = this.t.unifiedAuth.failed;
+  }
+
+  /** Retry confirming the server-side profile, then continue as normal. */
+  async retryProfile(): Promise<void> {
+    this.errorMessage = '';
+    this.showProfileRetry = false;
+    await this.auth.refreshProfile();
+    if (this.auth.profile()) {
+      this.router.navigateByUrl(this.auth.postLoginTarget(this.returnUrl));
+      return;
+    }
+    this.errorMessage =
+      'لسه السيرفر مش بيرد. ممكن تستنى شوية وتجرّب تاني، أو تتفرّج كزائر لحد ما الخدمة ترجع.';
+    this.showProfileRetry = true;
   }
 
   browseAsGuest(): void {

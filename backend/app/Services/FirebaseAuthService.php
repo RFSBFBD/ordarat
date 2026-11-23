@@ -16,7 +16,7 @@ class FirebaseAuthService
 
     public function __construct()
     {
-        $this->projectId = config('services.firebase.project_id', env('FIREBASE_PROJECT_ID', 'ordarat-qena'));
+        $this->projectId = config('services.firebase.project_id', env('FIREBASE_PROJECT_ID', 'planning-with-ai-d25ac'));
     }
 
     /**

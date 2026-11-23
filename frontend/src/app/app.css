@@ -338,3 +338,64 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Slim top progress bar for background API activity */
+.api-progress {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 3px;
+  z-index: 99998;
+  background: rgba(14, 90, 107, 0.08);
+  overflow: hidden;
+}
+
+.api-progress-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 38%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+  animation: apiProgressSlide 1.1s ease-in-out infinite;
+}
+
+@keyframes apiProgressSlide {
+  0% {
+    inset-inline-start: -38%;
+  }
+  100% {
+    inset-inline-start: 100%;
+  }
+}
+
+/* Signed-in-but-unconfirmed profile warning */
+.profile-warning {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.55rem 1rem;
+  background: #fff8e1;
+  color: #7a5b00;
+  border-bottom: 1px solid rgba(245, 179, 53, 0.5);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.profile-warning-btn {
+  background: var(--color-accent);
+  color: #1e2a2f;
+  border: none;
+  border-radius: 6px;
+  padding: 0.3rem 0.9rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.profile-warning-btn:hover {
+  background: var(--color-accent-hover);
+}

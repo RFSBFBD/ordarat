@@ -1,6 +1,19 @@
 <div class="ordarat-app min-h-screen flex flex-col">
-  <!-- Global Branded Loading Screen (Transitions & Actions) -->
+  <!-- Global Branded Loading Screen (Slow Transitions & Blocking Actions) -->
   <app-loading></app-loading>
+
+  <!-- Slim top progress bar while API requests run in the background -->
+  @if (loading.apiBusy() && !loading.isLoading()) {
+    <div class="api-progress" aria-hidden="true"><div class="api-progress-bar"></div></div>
+  }
+
+  <!-- Signed in but the API did not confirm the profile yet -->
+  @if (auth.isLoggedIn() && auth.profileError()) {
+    <div class="profile-warning" role="alert">
+      <span>سجّلنا دخولك بجوجل، بس السيرفر مش بيرد دلوقتي فمش قادرين نأكد حسابك.</span>
+      <button type="button" class="profile-warning-btn" (click)="retryProfile()">حاول تاني</button>
+    </div>
+  }
 
   <!-- Top Navigation Header -->
   <header class="app-header">
@@ -33,10 +46,14 @@
         <a routerLink="/customer/stores" routerLinkActive="active" class="nav-item">المتاجر</a>
 
         @if (showMerchantLink()) {
-          <a routerLink="/store/dashboard" routerLinkActive="active" class="nav-item">لوحة المتجر</a>
+          <a routerLink="/store/dashboard" routerLinkActive="active" class="nav-item"
+            >لوحة المتجر</a
+          >
         }
         @if (showBranchLink()) {
-          <a routerLink="/branch/dashboard" routerLinkActive="active" class="nav-item">لوحة الفرع</a>
+          <a routerLink="/branch/dashboard" routerLinkActive="active" class="nav-item"
+            >لوحة الفرع</a
+          >
         }
         @if (showAdminLink()) {
           <a routerLink="/admin/dashboard" routerLinkActive="active" class="nav-item">الأدمن</a>
@@ -65,7 +82,16 @@
 
   <!-- Routed Views -->
   <main class="main-content">
-    <router-outlet></router-outlet>
+    @if (loading.navError()) {
+      <app-error-state
+        title="الصفحة ماتحملتش"
+        message="حصلت مشكلة أثناء تحميل الصفحة دي. جرّب تحمّل الصفحة من الأول."
+        retryLabel="إعادة تحميل الصفحة"
+        (retry)="reloadPage()"
+      ></app-error-state>
+    } @else {
+      <router-outlet></router-outlet>
+    }
   </main>
 
   <!-- Global Footer -->

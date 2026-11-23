@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AR_TRANSLATIONS } from '../../../core/constants/translations';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
-import { LoadingStateComponent } from '../../../shared/components/loading-state/loading-state.component';
 import { ErrorStateComponent } from '../../../shared/components/error-state/error-state.component';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { ApiService, ApiStore } from '../../../core/services/api.service';
@@ -14,13 +13,7 @@ const PLACEHOLDER_IMG =
 @Component({
   selector: 'app-stores-list',
   standalone: true,
-  imports: [
-    CommonModule,
-    EmptyStateComponent,
-    LoadingStateComponent,
-    ErrorStateComponent,
-    IconComponent,
-  ],
+  imports: [CommonModule, EmptyStateComponent, ErrorStateComponent, IconComponent],
   template: `
     <div class="stores-page">
       <div class="tabs-header">
@@ -42,13 +35,25 @@ const PLACEHOLDER_IMG =
         </button>
       </div>
 
-      <app-loading-state
+      <!-- Skeleton cards keep the page layout stable while stores load -->
+      <div
+        class="stores-grid"
         *ngIf="loading"
-        [message]="t.customer.storesList.loading"
-      ></app-loading-state>
+        aria-busy="true"
+        [attr.aria-label]="t.customer.storesList.loading"
+      >
+        <div class="store-card skeleton-card" *ngFor="let i of skeletonCards">
+          <div class="skeleton skeleton-img"></div>
+          <div class="store-body">
+            <div class="skeleton skeleton-line wide"></div>
+            <div class="skeleton skeleton-line narrow"></div>
+          </div>
+        </div>
+      </div>
 
       <app-error-state
         *ngIf="!loading && loadError"
+        [title]="errorTitle"
         [message]="loadError"
         (retry)="loadStores()"
       ></app-error-state>
@@ -62,7 +67,11 @@ const PLACEHOLDER_IMG =
               class="store-img"
               loading="lazy"
             />
-            <span class="status-badge" [class.open]="store.is_accepting_orders" [class.closed]="!store.is_accepting_orders">
+            <span
+              class="status-badge"
+              [class.open]="store.is_accepting_orders"
+              [class.closed]="!store.is_accepting_orders"
+            >
               {{
                 store.is_accepting_orders
                   ? t.customer.storesList.statusOpen
@@ -181,6 +190,43 @@ const PLACEHOLDER_IMG =
       .store-body {
         padding: 1rem;
       }
+      .skeleton-card {
+        cursor: default;
+        pointer-events: none;
+      }
+      .skeleton-card:hover {
+        transform: none;
+        box-shadow: none;
+      }
+      .skeleton {
+        background: linear-gradient(90deg, #f1ead9 25%, #faf6ec 45%, #f1ead9 65%);
+        background-size: 200% 100%;
+        animation: shimmer 1.3s ease-in-out infinite;
+        border-radius: 6px;
+      }
+      .skeleton-img {
+        height: 160px;
+        border-radius: 0;
+      }
+      .skeleton-line {
+        height: 14px;
+        margin-bottom: 0.6rem;
+      }
+      .skeleton-line.wide {
+        width: 70%;
+      }
+      .skeleton-line.narrow {
+        width: 40%;
+        margin-bottom: 0;
+      }
+      @keyframes shimmer {
+        0% {
+          background-position: 200% 0;
+        }
+        100% {
+          background-position: -200% 0;
+        }
+      }
       .store-name {
         margin: 0 0 0.25rem 0;
         font-family: var(--font-heading);
@@ -208,6 +254,8 @@ export class StoresListComponent implements OnInit {
   stores: ApiStore[] = [];
   loading = true;
   loadError = '';
+  errorTitle = 'الخدمة مش متاحة دلوقتي';
+  readonly skeletonCards = [1, 2, 3, 4, 5, 6];
 
   ngOnInit(): void {
     this.loadStores();
@@ -222,8 +270,12 @@ export class StoresListComponent implements OnInit {
         this.loading = false;
         this.cdr.markForCheck();
       },
-      error: (err: { message?: string }) => {
+      error: (err: { kind?: string; message?: string }) => {
         this.loadError = err?.message || 'تعذر تحميل المتاجر. حاول مرة تانية';
+        // Match the title to the failure class so the page never shows two
+        // conflicting explanations (e.g. blaming the network on a server fault).
+        this.errorTitle =
+          err?.kind === 'network' ? 'الخدمة مش متاحة دلوقتي' : 'حصل خطأ أثناء تحميل المتاجر';
         this.loading = false;
         this.cdr.markForCheck();
       },

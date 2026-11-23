@@ -4,12 +4,14 @@ import { finalize } from 'rxjs';
 import { LoadingService } from '../services/loading.service';
 
 /**
- * Triggers the branded loading screen during API operations and async actions.
+ * Request feedback policy:
+ * - `X-Silent-Loading`: background refresh, no visual feedback at all.
+ * - `X-Blocking-Loading`: full-screen branded overlay (e.g. placing an order).
+ * - everything else: slim top progress bar, the page stays interactive.
  */
 export const loadingInterceptor: HttpInterceptorFn = (req, next) => {
   const loading = inject(LoadingService);
 
-  // If request specifies silent background loading, skip
   if (req.headers.has('X-Silent-Loading')) {
     const cleanedReq = req.clone({
       headers: req.headers.delete('X-Silent-Loading'),
@@ -17,11 +19,22 @@ export const loadingInterceptor: HttpInterceptorFn = (req, next) => {
     return next(cleanedReq);
   }
 
-  loading.show('جاري تنفيذ الطلب...');
+  if (req.headers.has('X-Blocking-Loading')) {
+    const cleanedReq = req.clone({
+      headers: req.headers.delete('X-Blocking-Loading'),
+    });
+    loading.show('جاري تنفيذ الطلب...');
+    return next(cleanedReq).pipe(
+      finalize(() => {
+        loading.hide();
+      }),
+    );
+  }
 
+  loading.apiStart();
   return next(req).pipe(
     finalize(() => {
-      loading.hide();
+      loading.apiEnd();
     }),
   );
 };

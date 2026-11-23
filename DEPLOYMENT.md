@@ -52,7 +52,7 @@ curl http://localhost:8000/health
 | `APP_DEBUG` | `false` | تعطيل تفاصيل الأخطاء في الإنتاج |
 | `APP_TIMEZONE` | `Africa/Cairo` | التوقيت الرسمي لمصر |
 | `DB_CONNECTION` | `sqlite` أو `pgsql` أو `mysql` | نوع قاعدة البيانات |
-| `FIREBASE_PROJECT_ID` | `ordarat-qena` | معرّف مشروع فايربيس للتحقق من التوكنات |
+| `FIREBASE_PROJECT_ID` | `planning-with-ai-d25ac` | معرّف مشروع فايربيس للتحقق من التوكنات — يجب أن يطابق مشروع إعداد الواجهة في `frontend/src/environments/` (حاليًا `planning-with-ai-d25ac`) وإلا فشل التحقق السيرفري من دخول Google |
 | `ORDARAT_CITY` | `قنا` | اسم المدينة للنطاق |
 | `SUBSCRIPTION_CONTACT_NUMBER` | `رقم تواصل حقيقي` | رقم الاشتراك الذي يظهر لأصحاب المطاعم والبقالات |
 | `UNACCEPTED_ORDER_ALERT_MINUTES`| `10` | مهلة تنبيه الأدمن عند تأخر المحل في قبول الطلب |

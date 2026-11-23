@@ -355,7 +355,7 @@ export class OrderTrackingComponent implements OnInit, OnDestroy {
       this.loading = true;
     }
     this.loadError = '';
-    this.api.getOrder(this.orderId).subscribe({
+    this.api.getOrder(this.orderId, { silent }).subscribe({
       next: (order) => {
         this.order = order;
         this.pageTitle = this.t.customer.orderTracking.title.replace('{id}', order.order_number);
@@ -367,7 +367,11 @@ export class OrderTrackingComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
       },
       error: (err: { message?: string }) => {
-        this.loadError = err?.message || this.t.customer.orderTracking.refreshFailed;
+        // A failed background refresh must not wipe a healthy order view;
+        // only block the page when there is nothing to show yet.
+        if (!silent || !this.order) {
+          this.loadError = err?.message || this.t.customer.orderTracking.refreshFailed;
+        }
         this.loading = false;
         this.cdr.markForCheck();
       },
