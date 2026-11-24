@@ -15,4 +15,6 @@ storage/*.key
 
 # Environment files
 **/.env
+*.env
+vercel.env
 !**/.env.example
