@@ -14,10 +14,19 @@ export interface ApiStore {
   type: 'restaurant' | 'grocery';
   name: string;
   image_url: string | null;
+  logo_url?: string | null;
   is_active: boolean;
   is_accepting_orders: boolean;
   working_hours?: { from?: string; to?: string } | null;
   branches?: ApiBranch[];
+}
+
+/** A registered business that is not approved yet: only its name, type and logo are public. */
+export interface ApiPendingBusiness {
+  id: number;
+  name: string;
+  type: 'restaurant' | 'grocery';
+  logo_url: string;
 }
 
 export interface ApiBranch {
@@ -146,6 +155,8 @@ export interface MerchantApplicationRequest {
   longitude: number;
   has_branches: boolean;
   area_name: string;
+  /** PNG/JPEG/WebP data URL, already downscaled in the browser. */
+  logo: string;
 }
 
 export interface AdminMerchantApplication {
@@ -156,6 +167,7 @@ export interface AdminMerchantApplication {
   address: string;
   has_branches: boolean;
   area_name: string;
+  logo_url?: string | null;
   status: 'pending' | 'approved' | 'rejected';
   admin_note: string | null;
   created_at: string;
@@ -194,6 +206,12 @@ export class ApiService {
     return this.http
       .get<Envelope<ApiStore[]>>(`${this.base}/stores`)
       .pipe(this.unwrap<ApiStore[]>());
+  }
+
+  getPendingBusinesses(): Observable<ApiPendingBusiness[]> {
+    return this.http
+      .get<Envelope<ApiPendingBusiness[]>>(`${this.base}/pending-businesses`)
+      .pipe(this.unwrap<ApiPendingBusiness[]>());
   }
 
   getStore(id: number): Observable<ApiStoreDetail> {
@@ -237,12 +255,6 @@ export class ApiService {
     return this.http
       .post<Envelope<{ profile_complete: boolean }>>(`${this.base}/onboarding/customer`, req)
       .pipe(this.unwrap<{ profile_complete: boolean }>());
-  }
-
-  skipOnboarding(): Observable<{ onboarding_state: string }> {
-    return this.http
-      .post<Envelope<{ onboarding_state: string }>>(`${this.base}/onboarding/skip`, {})
-      .pipe(this.unwrap<{ onboarding_state: string }>());
   }
 
   submitMerchantApplication(

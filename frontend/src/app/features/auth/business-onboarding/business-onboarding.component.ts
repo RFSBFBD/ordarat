@@ -37,6 +37,23 @@ import { ONBOARDING_STYLES } from '../onboarding.styles';
         </div>
 
         <div class="form-group">
+          <label class="label">{{ t.businessOnboarding.logoLabel }} *</label>
+          <div class="logo-row">
+            <div class="logo-preview" [class.empty]="!logoData">
+              <img *ngIf="logoData" [src]="logoData" [alt]="businessName || t.businessOnboarding.logoLabel" />
+              <span *ngIf="!logoData">{{ t.businessOnboarding.logoEmpty }}</span>
+            </div>
+            <label class="btn btn-location logo-pick">
+              {{ logoData ? t.businessOnboarding.logoChange : t.businessOnboarding.logoPick }}
+              <input type="file" accept="image/png,image/jpeg,image/webp" hidden (change)="onLogoSelected($event)" />
+            </label>
+          </div>
+          <span class="field-hint">{{ t.businessOnboarding.logoHint }}</span>
+          <span *ngIf="logoError" class="error-text">{{ logoError }}</span>
+          <span *ngIf="showErrors && !logoData && !logoError" class="error-text">{{ t.businessOnboarding.logoRequired }}</span>
+        </div>
+
+        <div class="form-group">
           <label class="label">{{ t.businessOnboarding.typeLabel }} *</label>
           <div class="choices-row">
             <button
@@ -144,7 +161,22 @@ import { ONBOARDING_STYLES } from '../onboarding.styles';
       </div>
     </div>
   `,
-  styles: [ONBOARDING_STYLES],
+  styles: [
+    ONBOARDING_STYLES +
+      `
+      .logo-row { display: flex; align-items: center; gap: 1rem; }
+      .logo-preview {
+        width: 88px; height: 88px; border-radius: 20px; overflow: hidden; flex-shrink: 0;
+        background: #f4efe6; border: 1px solid var(--color-border);
+        display: flex; align-items: center; justify-content: center;
+        color: var(--color-text-muted); font-size: 0.8rem; text-align: center;
+      }
+      .logo-preview.empty { border-style: dashed; }
+      .logo-preview img { width: 100%; height: 100%; object-fit: cover; }
+      .logo-pick { display: inline-block; text-align: center; cursor: pointer; }
+      .field-hint { color: var(--color-text-muted); font-size: 0.8rem; margin-top: 4px; display: block; }
+    `,
+  ],
 })
 export class BusinessOnboardingComponent implements OnInit {
   private readonly router = inject(Router);
@@ -154,6 +186,8 @@ export class BusinessOnboardingComponent implements OnInit {
   protected readonly t = AR_TRANSLATIONS;
 
   businessName = '';
+  logoData = '';
+  logoError = '';
   type: 'restaurant' | 'grocery' = 'restaurant';
   phone = '';
   areaName = '';
@@ -183,6 +217,54 @@ export class BusinessOnboardingComponent implements OnInit {
         this.phone = profile.phone;
       }
     });
+  }
+
+  /** Shrinks the picked image to a 256x256 square so the upload stays small. */
+  onLogoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    this.logoError = '';
+    if (!file) {
+      return;
+    }
+    if (!/^image\/(png|jpe?g|webp)$/.test(file.type) || file.size > 8 * 1024 * 1024) {
+      this.logoError = this.t.businessOnboarding.logoInvalid;
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const size = 256;
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      if (!ctx || !img.width || !img.height) {
+        this.logoError = this.t.businessOnboarding.logoInvalid;
+        this.cdr.markForCheck();
+        return;
+      }
+      const side = Math.min(img.width, img.height);
+      ctx.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, size, size);
+      let data = canvas.toDataURL('image/webp', 0.85);
+      if (!data.startsWith('data:image/webp') || data.length > 140_000) {
+        data = canvas.toDataURL('image/jpeg', 0.8);
+      }
+      if (data.length > 140_000) {
+        this.logoError = this.t.businessOnboarding.logoInvalid;
+      } else {
+        this.logoData = data;
+      }
+      this.cdr.markForCheck();
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      this.logoError = this.t.businessOnboarding.logoInvalid;
+      this.cdr.markForCheck();
+    };
+    img.src = url;
   }
 
   isPhoneValid(): boolean {
@@ -216,7 +298,7 @@ export class BusinessOnboardingComponent implements OnInit {
   submit(): void {
     this.showErrors = true;
     this.submitError = '';
-    if (!this.businessName || !this.isPhoneValid() || !this.areaName || !this.address || !this.hasLocation) {
+    if (!this.logoData || !this.businessName || !this.isPhoneValid() || !this.areaName || !this.address || !this.hasLocation) {
       return;
     }
     this.isSaving = true;
@@ -230,6 +312,7 @@ export class BusinessOnboardingComponent implements OnInit {
         longitude: this.longitude,
         has_branches: this.hasBranches === true,
         area_name: this.areaName,
+        logo: this.logoData,
       })
       .subscribe({
         next: () => {

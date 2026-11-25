@@ -25,6 +25,12 @@ return [
     'subscription_whatsapp_number' => env('SUBSCRIPTION_WHATSAPP_NUMBER', '+201055370118'),
 
     /*
+     * Show registered-but-unapproved businesses on the public store list with
+     * only their name and logo (SHOW_PENDING_BUSINESSES=false hides them).
+     */
+    'show_pending_businesses' => filter_var(env('SHOW_PENDING_BUSINESSES', true), FILTER_VALIDATE_BOOL),
+
+    /*
      * Server-side admin bootstrap list (comma-separated emails in the
      * ADMIN_EMAILS environment variable). A Google sign-in whose token
      * carries a Google-verified email matching this list starts as admin.

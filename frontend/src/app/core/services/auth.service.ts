@@ -20,13 +20,59 @@ export interface OrdaratUser {
   merchant_application_status?: 'pending' | 'approved' | 'rejected' | null;
 }
 
+/** Result of any sign-in / register / reset action. `error` is a Firebase or API code. */
+export interface AuthResult {
+  ok: boolean;
+  error?: string;
+}
+
+/** Arabic, user-facing text for a Firebase / API auth error code. */
+export function authErrorMessage(code: string | undefined): string {
+  switch (code) {
+    case 'auth/invalid-credential':
+    case 'auth/wrong-password':
+    case 'auth/user-not-found':
+    case 'auth/invalid-login-credentials':
+      return 'الإيميل أو الباسورد مش مظبوط. راجعهم وجرّب تاني';
+    case 'auth/invalid-email':
+      return 'اكتب الإيميل بشكل صحيح، مثال: name@gmail.com';
+    case 'auth/email-already-in-use':
+      return 'الإيميل ده مسجل عندنا قبل كده. سجّل دخولك أو استرجع الباسورد';
+    case 'auth/weak-password':
+      return 'الباسورد ضعيف. استخدم ٨ حروف أو أرقام على الأقل';
+    case 'auth/too-many-requests':
+      return 'محاولات كتير. استنى شوية وجرّب تاني';
+    case 'auth/network-request-failed':
+      return 'مفيش اتصال بالإنترنت أو الخدمة مش بترد. جرّب تاني';
+    case 'auth/user-disabled':
+      return 'الحساب ده متوقف. اتواصل معنا';
+    case 'auth/popup-blocked':
+      return 'المتصفح قفل نافذة جوجل. اسمح بالنوافذ المنبثقة وجرّب تاني';
+    case 'auth/unauthorized-domain':
+      return 'الدومين ده مش مضاف في إعدادات الدخول (Firebase). لازم الإدارة تضيفه';
+    case 'auth/operation-not-allowed':
+    case 'auth/configuration-not-found':
+    case 'auth/admin-restricted-operation':
+      return 'طريقة الدخول دي لسه مش متفعلة من إدارة المنصة (إعدادات Firebase)';
+    case 'auth/account-exists-with-different-credential':
+    case 'ACCOUNT_LINK_REQUIRED':
+      return 'الإيميل ده مسجل بطريقة دخول تانية. ادخل بنفس الطريقة اللي سجلت بيها أول مرة';
+    case 'EMAIL_NOT_VERIFIED':
+      return 'وثّق إيميلك من الرسالة اللي وصلتلك وبعدها سجّل دخولك';
+    case 'firebase-not-configured':
+      return 'تسجيل الدخول لسه محتاج تجهيز من إدارة المنصة (إعدادات Firebase)';
+    default:
+      return 'العملية ما كملتش… جرّب تاني';
+  }
+}
+
 interface MeResponse {
   success: boolean;
   data: OrdaratUser;
 }
 
 /**
- * ONE Google sign-in for everyone. The browser never picks a role: the API
+ * ONE sign-in system for everyone (Google or email + password). The browser never picks a role: the API
  * assigns it from the database (admin list, approved merchant application,
  * or branch-manager record linked by the verified Google email).
  * Firebase is imported lazily so the main bundle stays light.
@@ -172,7 +218,7 @@ export class AuthService {
   }
 
   /** Google popup sign-in, then loads the server-side profile. */
-  async signInWithGoogle(): Promise<{ ok: boolean; error?: string }> {
+  async signInWithGoogle(): Promise<AuthResult> {
     if (!this.isConfigured || !this.firebaseAuth) {
       return { ok: false, error: 'firebase-not-configured' };
     }
@@ -184,7 +230,7 @@ export class AuthService {
       provider.setCustomParameters({ prompt: 'select_account' });
       await signInWithPopup(this.firebaseAuth, provider);
       await this.refreshProfile();
-      return { ok: true };
+      return await this.afterSignIn();
     } catch (err: unknown) {
       const code = (err as { code?: string })?.code ?? '';
       if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
@@ -213,10 +259,125 @@ export class AuthService {
         localStorage.setItem('ordarat.auth_user', JSON.stringify(res.data));
       }
       this.profileError.set(null);
-    } catch {
+    } catch (err: unknown) {
       this.profile.set(null);
-      this.profileError.set('profile-unavailable');
+      const apiCode = (err as { error?: { error?: { code?: string } } })?.error?.error?.code;
+      this.profileError.set(
+        apiCode === 'EMAIL_NOT_VERIFIED' || apiCode === 'ACCOUNT_LINK_REQUIRED'
+          ? apiCode
+          : 'profile-unavailable',
+      );
     }
+  }
+
+  /** True when the signed-in email/password account has not verified its email yet. */
+  readonly needsEmailVerification = computed(() => {
+    const user = this.firebaseUser();
+    return !!user && user.emailVerified === false && environment.authStub !== true;
+  });
+
+  private async withBusy(action: () => Promise<AuthResult>): Promise<AuthResult> {
+    if (!this.isConfigured || !this.firebaseAuth) {
+      return { ok: false, error: 'firebase-not-configured' };
+    }
+    this.busy.set(true);
+    try {
+      return await action();
+    } catch (err: unknown) {
+      return { ok: false, error: (err as { code?: string })?.code || 'unknown' };
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** Email + password sign-in. Unverified emails sign in but are sent to verification. */
+  signInWithEmail(email: string, password: string): Promise<AuthResult> {
+    return this.withBusy(async () => {
+      const { signInWithEmailAndPassword } = await import('firebase/auth');
+      await signInWithEmailAndPassword(this.firebaseAuth!, email.trim(), password);
+      await this.refreshProfile();
+      return this.afterSignIn();
+    });
+  }
+
+  /**
+   * Creates the account, stores the name, and asks Firebase to send the
+   * verification email. The account gets no API access until it is verified.
+   */
+  registerWithEmail(
+    firstName: string,
+    lastName: string,
+    email: string,
+    password: string,
+  ): Promise<AuthResult> {
+    return this.withBusy(async () => {
+      const { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } =
+        await import('firebase/auth');
+      const cred = await createUserWithEmailAndPassword(this.firebaseAuth!, email.trim(), password);
+      await updateProfile(cred.user, { displayName: `${firstName.trim()} ${lastName.trim()}`.trim() });
+      await sendEmailVerification(cred.user);
+      return { ok: true };
+    });
+  }
+
+  /** Always resolves ok for unknown emails, so the form cannot be used to probe accounts. */
+  sendPasswordReset(email: string): Promise<AuthResult> {
+    return this.withBusy(async () => {
+      const { sendPasswordResetEmail } = await import('firebase/auth');
+      try {
+        await sendPasswordResetEmail(this.firebaseAuth!, email.trim());
+      } catch (err: unknown) {
+        const code = (err as { code?: string })?.code;
+        if (code !== 'auth/user-not-found') {
+          throw err;
+        }
+      }
+      return { ok: true };
+    });
+  }
+
+  resendVerification(): Promise<AuthResult> {
+    return this.withBusy(async () => {
+      const { sendEmailVerification } = await import('firebase/auth');
+      const user = this.firebaseAuth!.currentUser;
+      if (!user) {
+        return { ok: false, error: 'auth/user-not-found' };
+      }
+      await sendEmailVerification(user);
+      return { ok: true };
+    });
+  }
+
+  /** After the user clicked the email link: refresh the token and load the profile. */
+  checkEmailVerified(): Promise<AuthResult> {
+    return this.withBusy(async () => {
+      const user = this.firebaseAuth!.currentUser;
+      if (!user) {
+        return { ok: false, error: 'auth/user-not-found' };
+      }
+      await user.reload();
+      if (!user.emailVerified) {
+        return { ok: false, error: 'EMAIL_NOT_VERIFIED' };
+      }
+      await user.getIdToken(true);
+      this.firebaseUser.set(null);
+      this.firebaseUser.set(user);
+      await this.refreshProfile();
+      return this.afterSignIn();
+    });
+  }
+
+  /** Common end of every sign-in: refuse half-signed-in states with a clear code. */
+  private async afterSignIn(): Promise<AuthResult> {
+    const problem = this.profileError();
+    if (problem === 'ACCOUNT_LINK_REQUIRED') {
+      await this.logout();
+      return { ok: false, error: problem };
+    }
+    if (this.needsEmailVerification() || problem === 'EMAIL_NOT_VERIFIED') {
+      return { ok: false, error: 'EMAIL_NOT_VERIFIED' };
+    }
+    return { ok: true };
   }
 
   /**
@@ -227,6 +388,10 @@ export class AuthService {
     const profile = this.profile();
     const safeReturn =
       returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//') ? returnUrl : null;
+
+    if (this.needsEmailVerification()) {
+      return '/auth/verify-email';
+    }
 
     if (!profile) {
       return safeReturn ?? '/';
@@ -245,7 +410,12 @@ export class AuthService {
       return '/auth/pending';
     }
 
-    if (profile.onboarding_state === 'new' || profile.onboarding_state === 'merchant_rejected') {
+    // The first-time form is mandatory for every sign-in method.
+    if (
+      profile.profile_complete !== true ||
+      profile.onboarding_state === 'new' ||
+      profile.onboarding_state === 'merchant_rejected'
+    ) {
       return '/auth/welcome';
     }
 

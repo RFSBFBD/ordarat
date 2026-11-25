@@ -53,7 +53,7 @@ class UnifiedFlowVerificationTest extends TestCase
         $this->assertNotNull($user->profile_completed_at);
     }
 
-    public function test_skipped_visitor_data_is_saved_to_profile_at_first_order(): void
+    public function test_new_account_data_is_saved_to_profile_at_first_order(): void
     {
         [$store, $product] = $this->makeOrderableStore();
 
@@ -67,8 +67,8 @@ class UnifiedFlowVerificationTest extends TestCase
             'profile_completed_at' => null,
         ]);
 
-        // Visitor defers registration: "كمّلها عند أول طلب"
-        $this->actingAs($user)->postJson('/api/onboarding/skip')->assertStatus(200);
+        // Deferring is no longer possible: the first-time form is mandatory
+        $this->actingAs($user)->postJson('/api/onboarding/skip')->assertStatus(422);
         $this->assertNull($user->fresh()->profile_completed_at);
 
         // First real order: the confirmed checkout data lands in the profile

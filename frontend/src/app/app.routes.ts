@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, roleGuard } from './core/guards/auth.guard';
+import { authGuard, profileGateGuard, roleGuard } from './core/guards/auth.guard';
 
 /**
  * Every feature screen is lazy-loaded: the initial bundle only carries the
@@ -12,11 +12,13 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/home/home.component').then((m) => m.HomeComponent),
     pathMatch: 'full',
+    canActivate: [profileGateGuard],
   },
 
   // 2. Customer Zone
   {
     path: 'customer',
+    canActivateChild: [profileGateGuard],
     children: [
       { path: '', redirectTo: 'stores', pathMatch: 'full' },
       {
@@ -110,9 +112,29 @@ export const routes: Routes = [
           import('./features/auth/login/login.component').then((m) => m.LoginComponent),
       },
       {
+        path: 'register',
+        loadComponent: () =>
+          import('./features/auth/register/register.component').then((m) => m.RegisterComponent),
+      },
+      {
+        path: 'forgot-password',
+        loadComponent: () =>
+          import('./features/auth/forgot-password/forgot-password.component').then(
+            (m) => m.ForgotPasswordComponent,
+          ),
+      },
+      {
+        path: 'verify-email',
+        loadComponent: () =>
+          import('./features/auth/verify-email/verify-email.component').then(
+            (m) => m.VerifyEmailComponent,
+          ),
+      },
+      {
         path: 'welcome',
         loadComponent: () =>
           import('./features/auth/welcome/welcome.component').then((m) => m.WelcomeComponent),
+        canActivate: [authGuard],
       },
       {
         path: 'onboarding/customer',

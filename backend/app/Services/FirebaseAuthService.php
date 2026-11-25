@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\User;
 use Exception;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
@@ -10,6 +11,8 @@ use Illuminate\Support\Facades\Http;
 
 class FirebaseAuthService
 {
+    public const ALLOWED_PROVIDERS = ['google.com', 'password'];
+
     protected string $projectId;
 
     protected ?array $mockPublicKeys = null;
@@ -30,6 +33,69 @@ class FirebaseAuthService
     public function getProjectId(): string
     {
         return $this->projectId;
+    }
+
+    /**
+     * Map verified token claims to exactly one application user.
+     *
+     * Never merges two identities silently: an existing row is linked only when it has no
+     * Firebase identity yet (pre-seeded staff/merchant), and an email that already belongs to
+     * another Firebase identity is refused instead of creating a duplicate or taking it over.
+     *
+     * @throws AuthFailure
+     */
+    public function resolveUser(array $claims): User
+    {
+        $uid = $claims['sub'];
+        $email = mb_strtolower((string) ($claims['email'] ?? ''));
+        $name = $claims['name'] ?? ($email !== '' ? explode('@', $email)[0] : 'عميل قنا');
+
+        $user = User::where('firebase_uid', $uid)->first();
+
+        if (! $user && $email !== '') {
+            $existing = User::whereRaw('lower(email) = ?', [$email])->first();
+            if ($existing) {
+                if ($existing->firebase_uid !== null) {
+                    throw new AuthFailure(
+                        'ACCOUNT_LINK_REQUIRED',
+                        'البريد ده مسجل عندنا بطريقة دخول تانية. ادخل بالطريقة اللي سجلت بيها أول مرة',
+                        409
+                    );
+                }
+                $existing->update(['firebase_uid' => $uid]);
+                $user = $existing;
+            }
+        }
+
+        if (! $user) {
+            $user = User::create([
+                'firebase_uid' => $uid,
+                'name' => $name,
+                'email' => $email,
+                'role' => $this->initialRole($email),
+                'status' => 'active',
+            ])->refresh();
+        }
+
+        if (! $user->isActive()) {
+            throw new AuthFailure('ACCOUNT_SUSPENDED', 'حسابك متوقف. اتواصل معنا', 403);
+        }
+
+        return $user;
+    }
+
+    /**
+     * Everyone starts as a customer; only ADMIN_EMAILS bootstrap as admin
+     * (the email is always verified by the time this runs).
+     */
+    protected function initialRole(string $email): string
+    {
+        $adminEmails = array_map(
+            fn ($e) => mb_strtolower(trim($e)),
+            config('ordarat.admin_emails', [])
+        );
+
+        return in_array($email, $adminEmails, true) ? 'admin' : 'customer';
     }
 
     /**
@@ -98,16 +164,17 @@ class FirebaseAuthService
             throw new Exception('Token issued in the future (iat)');
         }
 
-        // 5. Strict Google Sign-in provider check
+        // 5. Only the two supported sign-in methods: Google, or email + password
         $firebaseClaims = (array) ($claims['firebase'] ?? []);
         $signInProvider = $firebaseClaims['sign_in_provider'] ?? '';
-        if ($signInProvider !== 'google.com') {
-            throw new Exception("Invalid sign_in_provider: {$signInProvider}. Only google.com is allowed");
+        if (! in_array($signInProvider, self::ALLOWED_PROVIDERS, true)) {
+            throw new Exception("Invalid sign_in_provider: {$signInProvider}. Only google.com and password are allowed");
         }
 
-        // 6. Strict email verification check
-        if (($claims['email_verified'] ?? false) !== true) {
-            throw new Exception('Google email is not verified (email_verified must be true)');
+        // 6. The email must be verified for BOTH methods (Google verifies it itself,
+        //    password accounts verify it through the Firebase email link).
+        if (($claims['email_verified'] ?? false) !== true || empty($claims['email'])) {
+            throw new AuthFailure('EMAIL_NOT_VERIFIED', 'وثّق بريدك الإلكتروني من الرسالة اللي وصلتلك، وبعدها سجّل دخولك', 401);
         }
 
         return $claims;

@@ -282,9 +282,9 @@ KEY;
         $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/auth/me');
 
-        // Refused with 401 INVALID_TOKEN because email_verified must be true
+        // Refused: the email must be verified before it can touch any account
         $response->assertStatus(401)
-            ->assertJsonPath('error.code', 'INVALID_TOKEN');
+            ->assertJsonPath('error.code', 'EMAIL_NOT_VERIFIED');
     }
 
     public function test_admin_emails_env_bootstraps_admin_role_with_verified_email(): void
@@ -319,7 +319,7 @@ KEY;
 
         // Rejected as unverified
         $response->assertStatus(401)
-            ->assertJsonPath('error.code', 'INVALID_TOKEN');
+            ->assertJsonPath('error.code', 'EMAIL_NOT_VERIFIED');
     }
 
     public function test_frontend_supplied_role_is_never_accepted(): void
@@ -341,11 +341,11 @@ KEY;
         $this->assertSame('customer', User::where('firebase_uid', 'firebase_uid_role_spoof')->first()->role);
     }
 
-    public function test_non_google_provider_token_is_rejected(): void
+    public function test_unsupported_provider_token_is_rejected(): void
     {
         $token = $this->generateTestToken([
             'firebase' => [
-                'sign_in_provider' => 'password',
+                'sign_in_provider' => 'anonymous',
             ],
         ]);
 

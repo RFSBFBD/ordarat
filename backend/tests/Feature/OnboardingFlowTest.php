@@ -74,14 +74,15 @@ class OnboardingFlowTest extends TestCase
             ->assertJsonPath('error.code', 'OUT_OF_COVERAGE');
     }
 
-    public function test_guest_can_skip_and_stay_browsing(): void
+    public function test_first_time_form_cannot_be_skipped(): void
     {
         $user = $this->customer();
 
-        $response = $this->actingAs($user)->postJson('/api/onboarding/skip');
+        $this->actingAs($user)->postJson('/api/onboarding/skip')
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'PROFILE_REQUIRED');
 
-        $response->assertStatus(200);
-        $this->assertSame('customer', $user->fresh()->onboarding_state);
+        $this->assertSame('new', $user->fresh()->onboarding_state);
         $this->assertNull($user->fresh()->profile_completed_at);
     }
 
@@ -98,6 +99,7 @@ class OnboardingFlowTest extends TestCase
             'longitude' => 32.7181,
             'has_branches' => false,
             'area_name' => 'وسط البلد',
+            'logo' => \Tests\TestCase::logoDataUrl(),
         ]);
 
         $response->assertStatus(201)

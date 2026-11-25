@@ -28,11 +28,14 @@ class MerchantApplication extends Model
         'longitude',
         'has_branches',
         'area_name',
+        'logo_data',
         'status',
         'admin_note',
         'reviewed_by',
         'reviewed_at',
     ];
+
+    protected $hidden = ['logo_data'];
 
     protected $casts = [
         'has_branches' => 'boolean',

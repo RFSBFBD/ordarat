@@ -5,10 +5,18 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../shared/components/error-state/error-state.component';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
-import { ApiService, ApiStore } from '../../../core/services/api.service';
+import { ApiPendingBusiness, ApiService, ApiStore } from '../../../core/services/api.service';
 
 const PLACEHOLDER_IMG =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="160" viewBox="0 0 300 160"><rect width="300" height="160" fill="%230E5A6B"/><text x="50%" y="50%" fill="%23FFFFFF" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="18">أوردرات - قنا</text></svg>';
+
+interface StoreCard {
+  id: number;
+  name: string;
+  logoUrl: string | null;
+  open: boolean;
+  pending: boolean;
+}
 
 @Component({
   selector: 'app-stores-list',
@@ -58,41 +66,36 @@ const PLACEHOLDER_IMG =
         (retry)="loadStores()"
       ></app-error-state>
 
-      <div class="stores-grid" *ngIf="!loading && !loadError && filteredStores.length > 0">
-        <div *ngFor="let store of filteredStores" class="store-card" (click)="viewStore(store.id)">
-          <div class="store-image-wrap">
+      <div class="stores-grid" *ngIf="!loading && !loadError && cards.length > 0">
+        <div
+          *ngFor="let card of cards"
+          class="store-card"
+          [class.pending-card]="card.pending"
+          [attr.role]="card.pending ? null : 'link'"
+          (click)="card.pending ? null : viewStore(card.id)"
+        >
+          <div class="logo-wrap">
             <img
-              [src]="store.image_url || placeholderImg"
-              [alt]="store.name"
-              class="store-img"
+              [src]="card.logoUrl || placeholderImg"
+              [alt]="card.name"
+              class="logo-img"
               loading="lazy"
             />
-            <span
-              class="status-badge"
-              [class.open]="store.is_accepting_orders"
-              [class.closed]="!store.is_accepting_orders"
-            >
-              {{
-                store.is_accepting_orders
-                  ? t.customer.storesList.statusOpen
-                  : t.customer.storesList.statusClosed
-              }}
-            </span>
           </div>
-          <div class="store-body">
-            <h3 class="store-name">{{ store.name }}</h3>
-            <p class="store-type">
-              {{
-                store.type === 'restaurant'
-                  ? t.customer.storesList.tabs.restaurants
-                  : t.customer.storesList.tabs.groceries
-              }}
-            </p>
-          </div>
+          <h3 class="store-name">{{ card.name }}</h3>
+          <span *ngIf="card.pending" class="soon-badge">{{ t.customer.storesList.pendingBadge }}</span>
+          <span
+            *ngIf="!card.pending"
+            class="status-badge"
+            [class.open]="card.open"
+            [class.closed]="!card.open"
+          >
+            {{ card.open ? t.customer.storesList.statusOpen : t.customer.storesList.statusClosed }}
+          </span>
         </div>
       </div>
 
-      <ng-container *ngIf="!loading && !loadError && filteredStores.length === 0">
+      <ng-container *ngIf="!loading && !loadError && cards.length === 0">
         <app-empty-state
           [title]="
             selectedTab === 'restaurants'
@@ -160,20 +163,53 @@ const PLACEHOLDER_IMG =
         transform: translateY(-3px);
         box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
       }
-      .store-image-wrap {
-        height: 160px;
-        position: relative;
-        background: #f4efe6;
+      .store-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 1.25rem 1rem 1rem;
+        gap: 0.6rem;
       }
-      .store-img {
+      .logo-wrap {
+        width: 112px;
+        height: 112px;
+        border-radius: 24px;
+        background: #f4efe6;
+        border: 1px solid var(--color-border);
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .logo-img {
         width: 100%;
         height: 100%;
         object-fit: cover;
       }
+      .store-name {
+        margin: 0;
+        font-family: var(--font-heading);
+        font-size: 1.1rem;
+        color: var(--color-text);
+      }
+      .pending-card {
+        cursor: default;
+        opacity: 0.92;
+      }
+      .pending-card:hover {
+        transform: none;
+        box-shadow: none;
+      }
+      .soon-badge {
+        padding: 0.25rem 0.65rem;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        background: #fdf1d6;
+        color: #8a5a00;
+      }
       .status-badge {
-        position: absolute;
-        top: 10px;
-        left: 10px;
         padding: 0.25rem 0.65rem;
         border-radius: 6px;
         font-size: 0.8rem;
@@ -252,6 +288,7 @@ export class StoresListComponent implements OnInit {
   selectedTab: 'restaurants' | 'groceries' = 'restaurants';
 
   stores: ApiStore[] = [];
+  pendingBusinesses: ApiPendingBusiness[] = [];
   loading = true;
   loadError = '';
   errorTitle = 'الخدمة مش متاحة دلوقتي';
@@ -264,6 +301,16 @@ export class StoresListComponent implements OnInit {
   loadStores(): void {
     this.loading = true;
     this.loadError = '';
+    // The teaser list is optional: a failure there must never hide the real stores.
+    this.api.getPendingBusinesses().subscribe({
+      next: (items) => {
+        this.pendingBusinesses = items;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.pendingBusinesses = [];
+      },
+    });
     this.api.getStores().subscribe({
       next: (stores) => {
         this.stores = stores;
@@ -282,10 +329,22 @@ export class StoresListComponent implements OnInit {
     });
   }
 
-  get filteredStores(): ApiStore[] {
-    return this.stores.filter(
-      (s) => s.type === (this.selectedTab === 'restaurants' ? 'restaurant' : 'grocery'),
-    );
+  /** Approved stores (clickable) followed by registered-but-pending businesses (name + logo only). */
+  get cards(): StoreCard[] {
+    const type = this.selectedTab === 'restaurants' ? 'restaurant' : 'grocery';
+    const approved = this.stores
+      .filter((s) => s.type === type)
+      .map((s) => ({
+        id: s.id,
+        name: s.name,
+        logoUrl: s.logo_url || s.image_url,
+        open: s.is_accepting_orders,
+        pending: false,
+      }));
+    const pending = this.pendingBusinesses
+      .filter((b) => b.type === type)
+      .map((b) => ({ id: b.id, name: b.name, logoUrl: b.logo_url, open: false, pending: true }));
+    return [...approved, ...pending];
   }
 
   viewStore(id: number): void {

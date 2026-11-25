@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\MerchantApplication;
 use App\Services\CheckoutService;
+use App\Support\BusinessLogo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -85,20 +86,18 @@ class OnboardingController extends Controller
     }
 
     /**
-     * The visitor chose "just looking": they keep browsing and shopping, and
-     * their data is only required when they actually place an order.
+     * Completing the first-time form is mandatory for every account, whichever
+     * sign-in method was used, so there is no way to defer it.
      */
     public function skip(Request $request): JsonResponse
     {
-        $user = $request->user();
-        if ($user->onboarding_state === 'new') {
-            $user->update(['onboarding_state' => 'customer']);
-        }
-
         return response()->json([
-            'success' => true,
-            'data' => ['onboarding_state' => $user->onboarding_state],
-        ]);
+            'success' => false,
+            'error' => [
+                'code' => 'PROFILE_REQUIRED',
+                'message' => 'لازم تكمّل بياناتك أول مرة قبل ما تكمل',
+            ],
+        ], 422);
     }
 
     public function submitMerchantApplication(Request $request): JsonResponse
@@ -135,13 +134,26 @@ class OnboardingController extends Controller
             'longitude' => 'required|numeric|between:-180,180',
             'has_branches' => 'required|boolean',
             'area_name' => 'required|string|max:120',
+            'logo' => 'required|string',
         ], [
             'business_name.required' => 'اكتب اسم النشاط',
             'type.in' => 'اختار نوع النشاط: مطعم أو بقالة',
             'phone.regex' => 'الرقم لازم يكون مصري (يبدأ بـ01 ويتكوّن من ١١ رقم)',
             'address.required' => 'اكتب عنوان النشاط',
             'area_name.required' => 'اكتب المنطقة اللي نشاطك فيها داخل قنا',
+            'logo.required' => 'ارفع لوجو النشاط',
         ]);
+
+        $logo = BusinessLogo::decode($validated['logo']);
+        if ($logo === null) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'INVALID_LOGO',
+                    'message' => 'اللوجو لازم يكون صورة PNG أو JPG أو WebP، مقاس بين ٣٢ و١٠٢٤ بكسل، وحجمها أقل من ١٥٠ كيلوبايت',
+                ],
+            ], 422);
+        }
 
         if (! CheckoutService::isWithinQenaBounds((float) $validated['latitude'], (float) $validated['longitude'])) {
             return response()->json([
@@ -162,6 +174,7 @@ class OnboardingController extends Controller
             'longitude' => $validated['longitude'],
             'has_branches' => $validated['has_branches'],
             'area_name' => $validated['area_name'],
+            'logo_data' => $validated['logo'],
             'status' => MerchantApplication::STATUS_PENDING,
         ]);
 

@@ -48,3 +48,33 @@ export function roleGuard(...roles: UserRole[]): CanActivateFn {
     });
   };
 }
+
+/**
+ * Keeps half-finished accounts on the way to being finished: an unverified
+ * email goes to verification, and a signed-in customer who has not
+ * completed the mandatory first-time form goes to it. Guests, staff and
+ * pending applicants pass.
+ */
+export const profileGateGuard: CanActivateFn = async (): Promise<boolean | UrlTree> => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+
+  await auth.whenReady();
+
+  if (!auth.isLoggedIn()) {
+    return true;
+  }
+  if (auth.needsEmailVerification()) {
+    return router.createUrlTree(['/auth/verify-email']);
+  }
+  const profile = auth.profile();
+  if (
+    profile &&
+    profile.role === 'customer' &&
+    profile.profile_complete !== true &&
+    profile.merchant_application_status !== 'pending'
+  ) {
+    return router.createUrlTree(['/auth/welcome']);
+  }
+  return true;
+};

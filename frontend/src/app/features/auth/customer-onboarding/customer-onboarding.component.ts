@@ -80,10 +80,6 @@ import { ONBOARDING_STYLES } from '../onboarding.styles';
         <button class="btn btn-submit" [disabled]="isSaving" (click)="save()">
           {{ isSaving ? t.states.loading : t.customerOnboarding.saveBtn }}
         </button>
-
-        <button class="btn btn-skip" [disabled]="isSaving" (click)="skip()">
-          {{ t.customerOnboarding.skipBtn }}
-        </button>
       </div>
     </div>
   `,
@@ -178,21 +174,5 @@ export class CustomerOnboardingComponent implements OnInit {
           this.cdr.markForCheck();
         },
       });
-  }
-
-  skip(): void {
-    this.isSaving = true;
-    this.api.skipOnboarding().subscribe({
-      next: () => {
-        this.isSaving = false;
-        void this.auth.refreshProfile().finally(() => {
-          this.router.navigate(['/customer/stores']);
-        });
-      },
-      error: () => {
-        this.isSaving = false;
-        this.router.navigate(['/customer/stores']);
-      },
-    });
   }
 }

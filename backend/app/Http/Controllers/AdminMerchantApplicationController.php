@@ -34,6 +34,7 @@ class AdminMerchantApplicationController extends Controller
                 'address' => $a->address,
                 'has_branches' => $a->has_branches,
                 'area_name' => $a->area_name,
+                'logo_url' => $a->logo_data ? '/api/pending-businesses/'.$a->id.'/logo' : null,
                 'status' => $a->status,
                 'admin_note' => $a->admin_note,
                 'created_at' => $a->created_at?->toIso8601String(),
@@ -73,6 +74,7 @@ class AdminMerchantApplicationController extends Controller
                 'name' => $application->business_name,
                 'is_active' => true,
                 'is_accepting_orders' => true,
+                'logo_data' => $application->logo_data,
             ]);
 
             Branch::create([

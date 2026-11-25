@@ -36,6 +36,9 @@ Route::get('/health', function () {
 
 Route::get('/stores', [StoreController::class, 'index']);
 Route::get('/stores/{store}', [StoreController::class, 'show']);
+Route::get('/stores/{store}/logo', [StoreController::class, 'logo']);
+Route::get('/pending-businesses', [StoreController::class, 'pending']);
+Route::get('/pending-businesses/{application}/logo', [StoreController::class, 'pendingLogo']);
 Route::post('/checkout/quote', [CheckoutController::class, 'quote']);
 
 // Firebase Token to App Session Exchange

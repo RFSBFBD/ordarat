@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\AppSessionService;
+use App\Services\AuthFailure;
 use App\Services\FirebaseAuthService;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -40,40 +41,7 @@ class AuthController extends Controller
         try {
             $claims = $this->firebaseAuth->verifyIdToken($firebaseToken);
             $firebaseUid = $claims['sub'];
-            $email = $claims['email'] ?? null;
-            $emailVerified = ($claims['email_verified'] ?? false) === true;
-            $trustedEmail = $emailVerified ? $email : null;
-            $name = $claims['name'] ?? ($email ? explode('@', $email)[0] : 'عميل قنا');
-
-            $user = User::where('firebase_uid', $firebaseUid)->first();
-
-            if (! $user && $trustedEmail) {
-                $existing = User::where('email', $trustedEmail)->first();
-                if ($existing && $existing->firebase_uid === null) {
-                    $existing->update(['firebase_uid' => $firebaseUid]);
-                    $user = $existing;
-                }
-            }
-
-            if (! $user) {
-                $user = User::create([
-                    'firebase_uid' => $firebaseUid,
-                    'name' => $name,
-                    'email' => $email,
-                    'role' => $this->resolveInitialRole($trustedEmail),
-                    'status' => 'active',
-                ]);
-            }
-
-            if (! $user->isActive()) {
-                return response()->json([
-                    'success' => false,
-                    'error' => [
-                        'code' => 'ACCOUNT_SUSPENDED',
-                        'message' => 'حسابك متوقف. اتواصل معنا',
-                    ],
-                ], 403);
-            }
+            $user = $this->firebaseAuth->resolveUser($claims);
 
             $appToken = $this->sessionService->createSession($user, $firebaseUid);
 
@@ -91,6 +59,11 @@ class AuthController extends Controller
                     'onboarding_state' => $user->onboarding_state,
                 ],
             ]);
+        } catch (AuthFailure $e) {
+            return response()->json([
+                'success' => false,
+                'error' => ['code' => $e->errorCode, 'message' => $e->getMessage()],
+            ], $e->status);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
@@ -171,20 +144,5 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'سجّلت خروجك',
         ]);
-    }
-
-    protected function resolveInitialRole(?string $email): string
-    {
-        if ($email) {
-            $adminEmails = array_map(
-                fn ($e) => mb_strtolower(trim($e)),
-                config('ordarat.admin_emails', [])
-            );
-            if (in_array(mb_strtolower($email), $adminEmails, true)) {
-                return 'admin';
-            }
-        }
-
-        return 'customer';
     }
 }

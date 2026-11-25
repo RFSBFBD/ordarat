@@ -298,6 +298,14 @@ import { ApiService } from '../../../core/services/api.service';
             <tbody>
               <tr *ngFor="let req of joinRequests">
                 <td>
+                  <img
+                    *ngIf="req.logo_url"
+                    [src]="req.logo_url"
+                    [alt]="req.business_name"
+                    width="48"
+                    height="48"
+                    style="border-radius: 12px; object-fit: cover; display: block; margin-bottom: 4px"
+                  />
                   <strong>{{ req.business_name }}</strong>
                   <div *ngIf="req.status !== 'pending'">
                     <small [style.color]="req.status === 'approved' ? 'var(--color-success)' : 'var(--color-danger)'">

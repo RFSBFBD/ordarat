@@ -19,13 +19,28 @@ class Store extends Model
         'is_active',
         'is_accepting_orders',
         'working_hours',
+        'logo_data',
     ];
+
+    protected $hidden = ['logo_data'];
+
+    protected $appends = ['logo_url'];
 
     protected $casts = [
         'is_active' => 'boolean',
         'is_accepting_orders' => 'boolean',
         'working_hours' => 'array',
     ];
+
+    /** Public URL of the business logo: uploaded logo first, then any legacy image URL. */
+    public function getLogoUrlAttribute(): ?string
+    {
+        if (! empty($this->attributes['logo_data'])) {
+            return '/api/stores/'.$this->id.'/logo?v='.($this->updated_at?->timestamp ?? 0);
+        }
+
+        return $this->image_url;
+    }
 
     public function users(): BelongsToMany
     {

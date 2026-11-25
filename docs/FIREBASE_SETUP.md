@@ -9,7 +9,7 @@
 
 1. افتح [console.firebase.google.com](https://console.firebase.google.com)
    وأنشئ مشروعًا باسم `ordarat-qena` (أو استخدم مشروعك الحالي).
-2. من **Authentication → Sign-in method** فعّل مزوّد **Google**.
+2. من **Authentication → Sign-in method** فعّل مزوّدين: **Google** (مع إيميل الدعم) و**Email/Password**. الاتنين لازم يكونوا شغالين عشان التسجيل بالإيميل والباسورد وبجوجل. تأكد كمان إن `ordarat.vercel.app` في **Authorized domains**.
 3. من **Project settings → General → Your apps** أضف **Web app** وانسخ قيم
    `apiKey` و `appId`.
 4. الصق القيم في:
@@ -57,3 +57,10 @@
 2. افتح صفحة الدخول، اضغط «دخول بجوجل»، أكمل النافذة المنبثقة.
 3. النجاح = إعادة التوجيه للصفحة المطلوبة وظهور اسمك في الهيدر.
 4. تحقق من الباك إند: `GET /api/auth/me` بتوكن Firebase يرجع الدور الصحيح.
+
+
+## بعد التحديث
+
+- شغّل `php artisan migrate --force` على قاعدة الإنتاج (بيضيف أعمدة اللوجو). الـ Dockerfile.vercel مش بيعمل migrate تلقائي.
+- `SHOW_PENDING_BUSINESSES=false` بيخفي كروت الأنشطة اللي لسه مستنية موافقة الأدمن.
+- `ADMIN_EMAILS` بتحدد إيميلات الأدمن عند أول تسجيل.

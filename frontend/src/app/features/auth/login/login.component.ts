@@ -1,187 +1,73 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AR_TRANSLATIONS } from '../../../core/constants/translations';
-import { AuthService } from '../../../core/services/auth.service';
+import { AuthService, authErrorMessage } from '../../../core/services/auth.service';
+import { AUTH_FORM_STYLES, AuthBrandComponent, GoogleButtonComponent } from '../shared/auth-ui';
 
 /**
- * ONE sign-in page for everyone. No role tabs, no passwords: a single
- * Google button, and the API decides where each account belongs.
+ * ONE sign-in page for everyone: email + password, or Google. The API
+ * decides where each account belongs after sign-in.
  */
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule, RouterLink, AuthBrandComponent, GoogleButtonComponent],
   template: `
-    <div class="login-wrapper">
-      <div class="login-box">
-        <div
-          class="login-logo-header"
-          style="display: flex; justify-content: center; margin-bottom: 1.25rem;"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 128 128"
-            width="80"
-            height="80"
-            style="filter: drop-shadow(0 4px 12px rgba(14, 90, 107, 0.2));"
-          >
-            <rect width="128" height="128" rx="32" fill="#0E5A6B" />
-            <path d="M 64 114 L 35.6 70.6 A 34 34 0 1 1 92.4 70.6 Z" fill="#F5B335" />
-            <circle cx="64" cy="44" r="3.5" fill="#FFFFFF" />
-            <path d="M 50 60 A 14 14 0 0 1 78 60 Z" fill="#FFFFFF" />
-            <rect x="47" y="62" width="34" height="4" rx="2" fill="#FFFFFF" />
-          </svg>
+    <div class="onboarding-wrapper">
+      <form class="onboarding-card auth-card" (ngSubmit)="signIn()" novalidate>
+        <app-auth-brand />
+
+        <div *ngIf="deniedMessage" class="error-box">{{ deniedMessage }}</div>
+
+        <h2 class="title">{{ t.emailAuth.loginTitle }}</h2>
+        <p class="desc">{{ t.emailAuth.loginDesc }}</p>
+
+        <div class="form-group">
+          <label class="label" for="email">{{ t.emailAuth.email }}</label>
+          <input id="email" name="email" type="email" class="input-field" autocomplete="email"
+            dir="ltr" [(ngModel)]="email" placeholder="name@gmail.com" />
+          <span *ngIf="showErrors && !isEmailValid()" class="error-text">{{ t.emailAuth.emailInvalid }}</span>
         </div>
 
-        <div *ngIf="deniedMessage" class="error-box">
-          {{ deniedMessage }}
+        <div class="form-group">
+          <label class="label" for="password">{{ t.emailAuth.password }}</label>
+          <input id="password" name="password" type="password" class="input-field"
+            autocomplete="current-password" dir="ltr" [(ngModel)]="password" />
+          <span *ngIf="showErrors && !password" class="error-text">{{ t.emailAuth.passwordRequired }}</span>
         </div>
 
-        <h2 class="title">{{ t.unifiedAuth.title }}</h2>
-        <p class="desc">{{ t.unifiedAuth.desc }}</p>
+        <div *ngIf="!auth.isConfigured" class="error-box">{{ t.unifiedAuth.notConfigured }}</div>
+        <div *ngIf="errorMessage" class="error-box" role="alert">{{ errorMessage }}</div>
 
-        <button
-          class="btn btn-google"
-          [disabled]="auth.busy() || !auth.isConfigured"
-          (click)="signInWithGoogle()"
-        >
-          <span class="g-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="18" height="18">
-              <path
-                fill="#4285F4"
-                d="M23.5 12.27c0-.85-.08-1.66-.22-2.45H12v4.64h6.45a5.52 5.52 0 0 1-2.39 3.62v3h3.87c2.26-2.09 3.57-5.16 3.57-8.81z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 24c3.24 0 5.96-1.07 7.94-2.91l-3.87-3c-1.07.72-2.44 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.96H1.29v3.1A12 12 0 0 0 12 24z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.27 14.28A7.2 7.2 0 0 1 4.89 12c0-.79.14-1.56.38-2.28v-3.1H1.29a12 12 0 0 0 0 10.76l3.98-3.1z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 4.76c1.76 0 3.34.6 4.58 1.8l3.44-3.44A11.98 11.98 0 0 0 12 0 12 12 0 0 0 1.29 6.62l3.98 3.1C6.22 6.87 8.87 4.76 12 4.76z"
-              />
-            </svg>
-          </span>
-          <span>{{ auth.busy() ? t.unifiedAuth.busy : t.unifiedAuth.googleBtn }}</span>
+        <button type="submit" class="btn btn-primary-solid" [disabled]="auth.busy() || !auth.isConfigured">
+          {{ auth.busy() ? t.unifiedAuth.busy : t.emailAuth.loginBtn }}
         </button>
 
-        <div *ngIf="!auth.isConfigured" class="error-box">
-          {{ t.unifiedAuth.notConfigured }}
-        </div>
+        <div class="divider">{{ t.emailAuth.or }}</div>
 
-        <div *ngIf="errorMessage" class="error-box">
-          {{ errorMessage }}
-        </div>
+        <app-google-button
+          [label]="t.unifiedAuth.googleBtn"
+          [disabled]="auth.busy() || !auth.isConfigured"
+          (pressed)="signInWithGoogle()"
+        />
 
-        <button
-          *ngIf="showProfileRetry"
-          class="btn btn-retry-profile"
-          [disabled]="auth.busy()"
-          (click)="retryProfile()"
-        >
+        <button *ngIf="showProfileRetry" type="button" class="btn btn-submit" [disabled]="auth.busy()" (click)="retryProfile()">
           {{ auth.busy() ? 'بنحاول...' : 'حاول تاني' }}
         </button>
 
+        <div class="links">
+          <a class="text-link" routerLink="/auth/forgot-password">{{ t.emailAuth.forgotLink }}</a>
+          <span>{{ t.emailAuth.noAccount }} <a class="text-link" routerLink="/auth/register" [queryParams]="returnParams()">{{ t.emailAuth.registerLink }}</a></span>
+        </div>
+
         <p class="guest-note">{{ t.unifiedAuth.guestNote }}</p>
-        <button class="btn btn-later" (click)="browseAsGuest()">
-          {{ t.unifiedAuth.browseGuestBtn }}
-        </button>
-      </div>
+        <button type="button" class="btn btn-skip" (click)="browseAsGuest()">{{ t.unifiedAuth.browseGuestBtn }}</button>
+      </form>
     </div>
   `,
-  styles: [
-    `
-      .login-wrapper {
-        display: flex;
-        justify-content: center;
-        padding: 2.5rem 1rem;
-      }
-      .login-box {
-        background: #ffffff;
-        border-radius: 16px;
-        padding: 2rem 1.75rem;
-        max-width: 460px;
-        width: 100%;
-        border: 1px solid var(--color-border);
-        text-align: center;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-      }
-      .title {
-        font-family: var(--font-heading);
-        color: var(--color-primary);
-        margin: 0 0 0.5rem 0;
-        font-size: 1.5rem;
-      }
-      .desc {
-        color: var(--color-text-muted);
-        font-size: 0.95rem;
-        margin-bottom: 1.5rem;
-        line-height: 1.6;
-      }
-      .btn {
-        width: 100%;
-        padding: 0.75rem 1rem;
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        font-size: 0.95rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.75rem;
-        border: none;
-        box-sizing: border-box;
-      }
-      .btn:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
-      .btn-google {
-        background: #4285f4;
-        color: #ffffff;
-        box-shadow: 0 2px 6px rgba(66, 133, 244, 0.3);
-        margin-bottom: 1rem;
-      }
-      .g-icon {
-        background: #ffffff;
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-      }
-      .guest-note {
-        color: var(--color-text-muted);
-        font-size: 0.85rem;
-        margin: 0.25rem 0 0.5rem;
-      }
-      .btn-later {
-        background: transparent;
-        color: var(--color-text-muted);
-        border: 1px solid var(--color-border);
-      }
-      .btn-retry-profile {
-        background: var(--color-accent);
-        color: #1e2a2f;
-        margin-bottom: 1rem;
-      }
-      .error-box {
-        background: #fff5f5;
-        color: var(--color-danger);
-        padding: 0.75rem;
-        border-radius: 6px;
-        margin-bottom: 1rem;
-        font-size: 0.85rem;
-        line-height: 1.5;
-      }
-    `,
-  ],
+  styles: [AUTH_FORM_STYLES],
 })
 export class LoginComponent implements OnInit {
   private readonly router = inject(Router);
@@ -189,6 +75,9 @@ export class LoginComponent implements OnInit {
   protected readonly auth = inject(AuthService);
   protected readonly t = AR_TRANSLATIONS;
 
+  email = '';
+  password = '';
+  showErrors = false;
   errorMessage = '';
   deniedMessage = '';
   showProfileRetry = false;
@@ -209,36 +98,51 @@ export class LoginComponent implements OnInit {
     });
   }
 
-  async signInWithGoogle(): Promise<void> {
-    this.errorMessage = '';
-    const result = await this.auth.signInWithGoogle();
+  returnParams(): Record<string, string> {
+    return this.returnUrl ? { returnUrl: this.returnUrl } : {};
+  }
 
-    if (result.ok) {
-      // The Google side passed; if the API could not confirm the profile,
-      // say so instead of silently landing on a half-logged-in home page.
-      if (!this.auth.profile()) {
-        this.errorMessage =
-          'تم تسجيل دخولك بجوجل، بس السيرفر مش بيرد فمش قادرين نكمل حسابك. جرّب تاني بعد شوية.';
-        this.showProfileRetry = true;
-        return;
-      }
-      this.router.navigateByUrl(this.auth.postLoginTarget(this.returnUrl));
+  isEmailValid(): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email.trim());
+  }
+
+  async signIn(): Promise<void> {
+    this.showErrors = true;
+    this.errorMessage = '';
+    if (!this.isEmailValid() || !this.password) {
       return;
     }
+    await this.finish(await this.auth.signInWithEmail(this.email, this.password));
+  }
 
+  async signInWithGoogle(): Promise<void> {
+    this.errorMessage = '';
+    await this.finish(await this.auth.signInWithGoogle());
+  }
+
+  private async finish(result: { ok: boolean; error?: string }): Promise<void> {
     if (result.error === 'cancelled') {
       return;
     }
-
-    if (result.error === 'firebase-not-configured') {
-      this.errorMessage = this.t.unifiedAuth.notConfigured;
+    if (result.error === 'EMAIL_NOT_VERIFIED') {
+      this.router.navigate(['/auth/verify-email']);
       return;
     }
-
-    this.errorMessage = this.t.unifiedAuth.failed;
+    if (!result.ok) {
+      this.errorMessage = authErrorMessage(result.error);
+      return;
+    }
+    // Signed in, but the API could not confirm the profile: say so instead of
+    // silently landing on a half-logged-in page.
+    if (!this.auth.profile()) {
+      this.errorMessage =
+        'تم تسجيل دخولك، بس السيرفر مش بيرد فمش قادرين نكمل حسابك. جرّب تاني بعد شوية.';
+      this.showProfileRetry = true;
+      return;
+    }
+    this.router.navigateByUrl(this.auth.postLoginTarget(this.returnUrl));
   }
 
-  /** Retry confirming the server-side profile, then continue as normal. */
   async retryProfile(): Promise<void> {
     this.errorMessage = '';
     this.showProfileRetry = false;
