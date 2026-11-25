@@ -8,9 +8,9 @@
   }
 
   <!-- Signed in but the API did not confirm the profile yet -->
-  @if (auth.isLoggedIn() && auth.profileError()) {
+  @if (auth.isLoggedIn() && auth.profileError() === 'profile-unavailable') {
     <div class="profile-warning" role="alert">
-      <span>سجّلنا دخولك بجوجل، بس السيرفر مش بيرد دلوقتي فمش قادرين نأكد حسابك.</span>
+      <span>سجّلنا دخولك، بس السيرفر مش بيرد دلوقتي فمش قادرين نأكد حسابك.</span>
       <button type="button" class="profile-warning-btn" (click)="retryProfile()">حاول تاني</button>
     </div>
   }
