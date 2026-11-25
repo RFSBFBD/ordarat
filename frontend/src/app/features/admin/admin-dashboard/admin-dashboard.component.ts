@@ -958,7 +958,7 @@ import { squareLogoFromFile } from '../../../core/utils/logo-image';
 
       <!-- MODAL: OPEN STORE ACCOUNT -->
       <div class="modal-backdrop" *ngIf="showNewStoreModal()">
-        <div class="modal-dialog" style="max-height: 90vh; overflow-y: auto;">
+        <div class="modal-dialog">
           <h4>{{ t.admin.stores.openStoreAccount }}</h4>
           <p class="modal-desc">{{ t.admin.stores.openStoreDesc }}</p>
 
@@ -1420,6 +1420,10 @@ import { squareLogoFromFile } from '../../../core/utils/logo-image';
         border-radius: 12px;
         width: 100%;
         max-width: 480px;
+        max-height: 92vh;
+        max-height: 92dvh;
+        overflow-y: auto;
+        overscroll-behavior: contain;
       }
       .modal-desc {
         font-size: 0.88rem;
@@ -1431,6 +1435,11 @@ import { squareLogoFromFile } from '../../../core/utils/logo-image';
         justify-content: flex-end;
         gap: 0.75rem;
         margin-top: 1.5rem;
+        position: sticky;
+        bottom: -1.75rem;
+        background: #fff;
+        padding: 0.75rem 0 0.25rem;
+        border-top: 1px solid #eee;
       }
       .branch-pill {
         background: #e2e8f0;
