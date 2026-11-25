@@ -22,7 +22,7 @@ class AdminMerchantApplicationController extends Controller
     {
         $status = $request->query('status');
 
-        $applications = MerchantApplication::with('user:id,name,email,phone,status')
+        $applications = MerchantApplication::with(['user:id,name,email,phone,status', 'branches'])
             ->when($status, fn ($q) => $q->where('status', $status))
             ->latest('id')
             ->get()
@@ -34,6 +34,7 @@ class AdminMerchantApplicationController extends Controller
                 'address' => $a->address,
                 'has_branches' => $a->has_branches,
                 'area_name' => $a->area_name,
+                'extra_branches' => $a->branches->map(fn ($b) => ['name' => $b->name, 'address' => $b->address, 'phone' => $b->phone])->values(),
                 'logo_url' => $a->logo_data ? '/api/pending-businesses/'.$a->id.'/logo' : null,
                 'status' => $a->status,
                 'admin_note' => $a->admin_note,
@@ -86,6 +87,18 @@ class AdminMerchantApplicationController extends Controller
                 'phone' => $application->phone,
                 'is_active' => true,
             ]);
+
+            foreach ($application->branches as $extra) {
+                Branch::create([
+                    'store_id' => $store->id,
+                    'name' => $extra->name,
+                    'address' => $extra->address,
+                    'latitude' => $extra->latitude,
+                    'longitude' => $extra->longitude,
+                    'phone' => $extra->phone,
+                    'is_active' => true,
+                ]);
+            }
 
             $store->users()->syncWithoutDetaching([$owner->id]);
             $owner->update(['role' => 'merchant', 'onboarding_state' => 'merchant_approved']);

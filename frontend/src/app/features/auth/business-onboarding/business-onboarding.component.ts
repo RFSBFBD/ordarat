@@ -13,6 +13,15 @@ import { ONBOARDING_STYLES } from '../onboarding.styles';
  * application only; the admin's approval is what creates the store and
  * grants the merchant role. Nothing here grants any privilege.
  */
+interface BranchDraft {
+  name: string;
+  address: string;
+  phone: string;
+  hasLocation: boolean;
+  latitude: number;
+  longitude: number;
+}
+
 @Component({
   selector: 'app-business-onboarding',
   standalone: true,
@@ -77,9 +86,14 @@ import { ONBOARDING_STYLES } from '../onboarding.styles';
         </div>
 
         <div class="form-group">
-          <label class="label">{{ t.businessOnboarding.phoneLabel }} *</label>
+          <label class="label phone-label">
+            <app-icon name="phone" [size]="16" />
+            {{ t.businessOnboarding.phoneLabel }} *
+          </label>
+          <span class="field-hint phone-hint">{{ t.businessOnboarding.phoneHint }}</span>
           <input
             type="tel"
+            inputmode="numeric"
             [(ngModel)]="phone"
             class="input-field"
             placeholder="01012345678"
@@ -92,25 +106,15 @@ import { ONBOARDING_STYLES } from '../onboarding.styles';
 
         <div class="form-group">
           <label class="label">{{ t.businessOnboarding.areaLabel }} *</label>
-          <select [(ngModel)]="markaz" class="input-field" name="markaz">
-            <option value="" disabled>{{ t.businessOnboarding.areaPlaceholder }}</option>
-            <option *ngFor="let m of markazList" [value]="m">{{ m }}</option>
-          </select>
-          <span *ngIf="showErrors && !markaz" class="error-text">
-            {{ t.businessOnboarding.areaRequired }}
-          </span>
-        </div>
-
-        <div class="form-group">
-          <label class="label">{{ t.businessOnboarding.neighborhoodLabel }} *</label>
           <input
             type="text"
             [(ngModel)]="neighborhood"
             class="input-field"
-            [placeholder]="t.businessOnboarding.neighborhoodPlaceholder"
+            [placeholder]="t.businessOnboarding.areaPlaceholder"
           />
+          <span class="field-hint">{{ t.businessOnboarding.areaHint }}</span>
           <span *ngIf="showErrors && !neighborhood.trim()" class="error-text">
-            {{ t.businessOnboarding.neighborhoodRequired }}
+            {{ t.businessOnboarding.areaRequired }}
           </span>
         </div>
 
@@ -134,7 +138,7 @@ import { ONBOARDING_STYLES } from '../onboarding.styles';
               type="button"
               class="choice-chip"
               [class.active]="hasBranches === true"
-              (click)="hasBranches = true"
+              (click)="hasBranches = true; branches.length === 0 && addBranch()"
             >
               {{ t.businessOnboarding.branchesYes }}
             </button>
@@ -147,7 +151,23 @@ import { ONBOARDING_STYLES } from '../onboarding.styles';
               {{ t.businessOnboarding.branchesNo }}
             </button>
           </div>
-          <span *ngIf="hasBranches === true" class="field-hint">{{ t.businessOnboarding.branchesNote }}</span>
+          <div *ngIf="hasBranches === true" class="branches-list">
+            <p class="field-hint">{{ t.businessOnboarding.branchesNote }}</p>
+            <div class="branch-box" *ngFor="let b of branches; let i = index">
+              <div class="branch-head">
+                <strong>{{ t.businessOnboarding.branchTitle }} {{ i + 1 }}</strong>
+                <button type="button" class="link-btn" (click)="removeBranch(i)">{{ t.businessOnboarding.branchRemove }}</button>
+              </div>
+              <input type="text" [(ngModel)]="b.name" class="input-field" [placeholder]="t.businessOnboarding.branchName" />
+              <input type="text" [(ngModel)]="b.address" class="input-field" [placeholder]="t.businessOnboarding.branchAddress" />
+              <input type="tel" inputmode="numeric" maxlength="11" [(ngModel)]="b.phone" class="input-field" [placeholder]="t.businessOnboarding.branchPhone" />
+              <button type="button" class="btn btn-location" (click)="locateBranch(b)">
+                {{ b.hasLocation ? t.businessOnboarding.locationShared : t.businessOnboarding.branchLocationBtn }}
+              </button>
+              <span *ngIf="showErrors && !isBranchValid(b)" class="error-text">{{ t.businessOnboarding.branchInvalid }}</span>
+            </div>
+            <button type="button" class="btn btn-outline add-branch" (click)="addBranch()">+ {{ t.businessOnboarding.branchAdd }}</button>
+          </div>
           <span *ngIf="showErrors && hasBranches === null" class="error-text">
             {{ t.businessOnboarding.branchesRequired }}
           </span>
@@ -190,6 +210,12 @@ import { ONBOARDING_STYLES } from '../onboarding.styles';
       .logo-preview.empty { border-style: dashed; }
       .logo-preview img { width: 100%; height: 100%; object-fit: cover; }
       .logo-pick { display: inline-block; text-align: center; cursor: pointer; }
+      .phone-label { display: flex; align-items: center; gap: 6px; }
+      .phone-hint { margin: 2px 0 6px; }
+      .branch-box { border: 1px dashed var(--color-border); border-radius: 14px; padding: 0.9rem; margin: 0.75rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+      .branch-head { display: flex; justify-content: space-between; align-items: center; }
+      .link-btn { background: none; border: 0; color: var(--color-danger, #c0392b); cursor: pointer; font: inherit; }
+      .add-branch { width: 100%; }
       .field-hint { color: var(--color-text-muted); font-size: 0.8rem; margin-top: 4px; display: block; }
     `,
   ],
@@ -205,9 +231,7 @@ export class BusinessOnboardingComponent implements OnInit {
   logoData = '';
   logoError = '';
   type: 'restaurant' | 'grocery' | '' = '';
-  /** The nine markaz of Qena governorate (qena.gov.eg administrative division, north to south). */
-  readonly markazList = ['أبو تشت', 'فرشوط', 'نجع حمادي', 'دشنا', 'الوقف', 'قنا', 'قفط', 'قوص', 'نقادة'];
-  markaz = '';
+  branches: BranchDraft[] = [];
   neighborhood = '';
   phone = '';
   address = '';
@@ -286,6 +310,38 @@ export class BusinessOnboardingComponent implements OnInit {
     img.src = url;
   }
 
+  addBranch(): void {
+    this.branches.push({ name: '', address: '', phone: '', hasLocation: false, latitude: 0, longitude: 0 });
+  }
+
+  removeBranch(i: number): void {
+    this.branches.splice(i, 1);
+  }
+
+  isBranchValid(b: BranchDraft): boolean {
+    return !!b.name.trim() && !!b.address.trim() && b.hasLocation && (!b.phone || /^01[0125][0-9]{8}$/.test(b.phone));
+  }
+
+  locateBranch(b: BranchDraft): void {
+    if (!navigator.geolocation) {
+      this.locationError = this.t.customer.geolocation.unsupported;
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        b.hasLocation = true;
+        b.latitude = pos.coords.latitude;
+        b.longitude = pos.coords.longitude;
+        this.cdr.markForCheck();
+      },
+      () => {
+        this.locationError = this.t.customer.geolocation.denied;
+        this.cdr.markForCheck();
+      },
+      { timeout: 10000, enableHighAccuracy: true },
+    );
+  }
+
   isPhoneValid(): boolean {
     return /^01[0125][0-9]{8}$/.test(this.phone);
   }
@@ -319,7 +375,8 @@ export class BusinessOnboardingComponent implements OnInit {
     this.submitError = '';
     if (
       !this.logoData || !this.businessName || !this.type || !this.isPhoneValid() ||
-      !this.markaz || !this.neighborhood.trim() || !this.address || this.hasBranches === null || !this.hasLocation
+      !this.neighborhood.trim() || !this.address || this.hasBranches === null || !this.hasLocation ||
+      (this.hasBranches === true && (this.branches.length === 0 || !this.branches.every((b) => this.isBranchValid(b))))
     ) {
       return;
     }
@@ -333,8 +390,18 @@ export class BusinessOnboardingComponent implements OnInit {
         latitude: this.latitude,
         longitude: this.longitude,
         has_branches: this.hasBranches === true,
-        area_name: `${this.markaz} - ${this.neighborhood.trim()}`,
+        area_name: this.neighborhood.trim(),
         logo: this.logoData,
+        branches:
+          this.hasBranches === true
+            ? this.branches.map((b) => ({
+                name: b.name.trim(),
+                address: b.address.trim(),
+                phone: b.phone || null,
+                latitude: b.latitude,
+                longitude: b.longitude,
+              }))
+            : [],
       })
       .subscribe({
         next: () => {

@@ -36,9 +36,14 @@ import { ONBOARDING_STYLES } from '../onboarding.styles';
         </div>
 
         <div class="form-group">
-          <label class="label">{{ t.customerOnboarding.phoneLabel }} *</label>
+          <label class="label phone-label">
+            <app-icon name="phone" [size]="16" />
+            {{ t.customerOnboarding.phoneLabel }} *
+          </label>
+          <span class="phone-hint">{{ t.customerOnboarding.phoneHint }}</span>
           <input
             type="tel"
+            inputmode="numeric"
             [(ngModel)]="phone"
             class="input-field"
             placeholder="01012345678"
@@ -83,7 +88,13 @@ import { ONBOARDING_STYLES } from '../onboarding.styles';
       </div>
     </div>
   `,
-  styles: [ONBOARDING_STYLES],
+  styles: [
+    ONBOARDING_STYLES +
+      `
+      .phone-label { display: flex; align-items: center; gap: 6px; }
+      .phone-hint { display: block; margin: 2px 0 6px; font-size: 0.82rem; color: var(--color-text-muted); }
+    `,
+  ],
 })
 export class CustomerOnboardingComponent implements OnInit {
   private readonly router = inject(Router);

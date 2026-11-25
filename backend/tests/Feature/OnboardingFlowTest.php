@@ -115,6 +115,59 @@ class OnboardingFlowTest extends TestCase
         ]);
     }
 
+    public function test_application_with_branches_stores_them_and_approval_creates_real_branches(): void
+    {
+        $user = $this->customer();
+        $payload = [
+            'business_name' => 'مطعم الفروع',
+            'type' => 'restaurant',
+            'phone' => '01012345678',
+            'address' => 'وسط البلد قنا',
+            'latitude' => 26.1642,
+            'longitude' => 32.7181,
+            'has_branches' => true,
+            'area_name' => 'وسط البلد',
+            'logo' => \Tests\TestCase::logoDataUrl(),
+            'branches' => [
+                ['name' => 'فرع الحميدات', 'address' => 'الحميدات', 'phone' => '01112345678', 'latitude' => 26.17, 'longitude' => 32.72],
+                ['name' => 'فرع المحطة', 'address' => 'شارع المحطة', 'latitude' => 26.16, 'longitude' => 32.71],
+            ],
+        ];
+
+        $this->actingAs($user)->postJson('/api/onboarding/merchant-application', $payload)->assertStatus(201);
+        $application = $user->merchantApplications()->first();
+        $this->assertSame(2, $application->branches()->count());
+
+        $this->actingAs($this->admin())->getJson('/api/admin/merchant-applications')
+            ->assertJsonPath('data.0.extra_branches.0.name', 'فرع الحميدات');
+
+        $this->actingAs($this->admin())->postJson("/api/admin/merchant-applications/{$application->id}/approve")->assertStatus(200);
+        $store = \App\Models\Store::where('name', 'مطعم الفروع')->first();
+        $this->assertSame(3, $store->branches()->count());
+    }
+
+    public function test_has_branches_without_any_branch_or_outside_qena_is_rejected(): void
+    {
+        $user = $this->customer();
+        $base = [
+            'business_name' => 'مطعم',
+            'type' => 'restaurant',
+            'phone' => '01012345678',
+            'address' => 'قنا',
+            'latitude' => 26.1642,
+            'longitude' => 32.7181,
+            'has_branches' => true,
+            'area_name' => 'وسط البلد',
+            'logo' => \Tests\TestCase::logoDataUrl(),
+        ];
+        $this->actingAs($user)->postJson('/api/onboarding/merchant-application', $base)
+            ->assertStatus(422)->assertJsonPath('error.code', 'BRANCHES_REQUIRED');
+        $this->actingAs($user)->postJson('/api/onboarding/merchant-application', $base + [
+            'branches' => [['name' => 'بعيد', 'address' => 'القاهرة', 'latitude' => 30.04, 'longitude' => 31.23]],
+        ])->assertStatus(422)->assertJsonPath('error.code', 'OUT_OF_COVERAGE');
+        $this->assertSame(0, $user->merchantApplications()->count());
+    }
+
     public function test_second_pending_application_is_rejected(): void
     {
         $user = $this->customer();

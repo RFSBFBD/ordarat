@@ -185,18 +185,50 @@ describe('profileGateGuard', () => {
 });
 
 describe('BusinessOnboardingComponent', () => {
-  it('has no preselected type, a Qena markaz list, phone, logo and branches question', () => {
+  function build() {
     const auth = fakeAuth();
     auth.firebaseUser.set({ emailVerified: true });
     auth.profile.set({ role: 'customer', profile_completed: false });
     const f = setup(BusinessOnboardingComponent, auth);
-    const c = f.componentInstance as BusinessOnboardingComponent;
-    const el = f.nativeElement as HTMLElement;
+    return { f, c: f.componentInstance as BusinessOnboardingComponent, el: f.nativeElement as HTMLElement };
+  }
+
+  it('has no preselected type, a clear phone prompt, logo upload, area and branches question', () => {
+    const { c, el } = build();
     expect(c.type).toBe('');
-    expect(c.markazList.length).toBe(9);
-    expect(el.querySelector('select')).toBeTruthy();
+    expect(c.hasBranches).toBeNull();
     expect(el.querySelector('input[type="file"]')).toBeTruthy();
     expect(el.querySelector('input[type="tel"]')).toBeTruthy();
+    expect(el.textContent).toContain('رقم تليفون النشاط');
+    expect(el.textContent).toContain('مطلوب. رقم مصري');
+    expect(el.textContent).toContain('المنطقة جوه مدينة قنا');
     expect(el.textContent).toContain('أيوه عندي فروع');
+  });
+
+  it('shows empty required errors on submit and never calls the API', () => {
+    const { f, c, el } = build();
+    c.submit();
+    (c as any).cdr.markForCheck();
+    f.detectChanges();
+    expect(el.textContent).toContain('اختار إذا كان نشاطك مطعم أو متجر');
+    expect(el.textContent).toContain('اختار لو عندك فروع تانية');
+    expect(el.textContent).toContain('ارفع لوجو النشاط');
+    expect(c.isSaving).toBe(false);
+  });
+
+  it('choosing "yes" opens a branch form and each branch needs name, address and location', () => {
+    const { f, c, el } = build();
+    c.hasBranches = true;
+    c.addBranch();
+    (c as any).cdr.markForCheck();
+    f.detectChanges();
+    expect(el.querySelector('input[placeholder="اسم الفرع"]')).toBeTruthy();
+    expect(c.isBranchValid(c.branches[0])).toBe(false);
+    Object.assign(c.branches[0], { name: 'فرع 2', address: 'الحميدات', hasLocation: true, latitude: 26.1, longitude: 32.7 });
+    expect(c.isBranchValid(c.branches[0])).toBe(true);
+    c.branches[0].phone = '123';
+    expect(c.isBranchValid(c.branches[0])).toBe(false);
+    c.removeBranch(0);
+    expect(c.branches.length).toBe(0);
   });
 });

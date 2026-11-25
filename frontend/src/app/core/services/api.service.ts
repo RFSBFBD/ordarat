@@ -157,6 +157,7 @@ export interface MerchantApplicationRequest {
   area_name: string;
   /** PNG/JPEG/WebP data URL, already downscaled in the browser. */
   logo: string;
+  branches?: { name: string; address: string; phone: string | null; latitude: number; longitude: number }[];
 }
 
 export interface AdminMerchantApplication {
@@ -167,6 +168,7 @@ export interface AdminMerchantApplication {
   address: string;
   has_branches: boolean;
   area_name: string;
+  extra_branches?: { name: string; address: string; phone: string | null }[];
   logo_url?: string | null;
   status: 'pending' | 'approved' | 'rejected';
   admin_note: string | null;

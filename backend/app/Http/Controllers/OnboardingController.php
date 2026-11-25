@@ -7,6 +7,7 @@ use App\Services\CheckoutService;
 use App\Support\BusinessLogo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Unified Google sign-in onboarding. One login for everyone; the browser
@@ -135,7 +136,18 @@ class OnboardingController extends Controller
             'has_branches' => 'required|boolean',
             'area_name' => 'required|string|max:120',
             'logo' => 'required|string',
+            'branches' => 'nullable|array|max:10',
+            'branches.*.name' => 'required|string|max:120',
+            'branches.*.address' => 'required|string|max:255',
+            'branches.*.phone' => ['nullable', 'string', 'regex:/^01[0125][0-9]{8}$/'],
+            'branches.*.latitude' => 'required|numeric|between:-90,90',
+            'branches.*.longitude' => 'required|numeric|between:-180,180',
         ], [
+            'branches.*.name.required' => 'اكتب اسم كل فرع',
+            'branches.*.address.required' => 'اكتب عنوان كل فرع',
+            'branches.*.phone.regex' => 'رقم الفرع لازم يكون مصري (يبدأ بـ01 ويتكوّن من ١١ رقم)',
+            'branches.*.latitude.required' => 'حدد موقع كل فرع',
+
             'business_name.required' => 'اكتب اسم النشاط',
             'type.in' => 'اختار نوع النشاط: مطعم أو بقالة',
             'phone.regex' => 'الرقم لازم يكون مصري (يبدأ بـ01 ويتكوّن من ١١ رقم)',
@@ -143,6 +155,28 @@ class OnboardingController extends Controller
             'area_name.required' => 'اكتب المنطقة اللي نشاطك فيها داخل قنا',
             'logo.required' => 'ارفع لوجو النشاط',
         ]);
+
+        $extraBranches = $validated['branches'] ?? [];
+        if ($validated['has_branches'] && count($extraBranches) === 0) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'BRANCHES_REQUIRED',
+                    'message' => 'ضيف فرع واحد على الأقل أو اختار إن عندك فرع واحد بس',
+                ],
+            ], 422);
+        }
+        foreach ($extraBranches as $b) {
+            if (! CheckoutService::isWithinQenaBounds((float) $b['latitude'], (float) $b['longitude'])) {
+                return response()->json([
+                    'success' => false,
+                    'error' => [
+                        'code' => 'OUT_OF_COVERAGE',
+                        'message' => 'كل الفروع لازم تكون داخل مدينة قنا',
+                    ],
+                ], 422);
+            }
+        }
 
         $logo = BusinessLogo::decode($validated['logo']);
         if ($logo === null) {
@@ -165,7 +199,8 @@ class OnboardingController extends Controller
             ], 422);
         }
 
-        $application = $user->merchantApplications()->create([
+        $application = DB::transaction(function () use ($user, $validated, $extraBranches) {
+            $application = $user->merchantApplications()->create([
             'business_name' => $validated['business_name'],
             'type' => $validated['type'],
             'phone' => $validated['phone'],
@@ -176,7 +211,22 @@ class OnboardingController extends Controller
             'area_name' => $validated['area_name'],
             'logo_data' => $validated['logo'],
             'status' => MerchantApplication::STATUS_PENDING,
-        ]);
+            ]);
+
+            if ($validated['has_branches']) {
+                foreach ($extraBranches as $b) {
+                    $application->branches()->create([
+                        'name' => $b['name'],
+                        'address' => $b['address'],
+                        'phone' => $b['phone'] ?? null,
+                        'latitude' => $b['latitude'],
+                        'longitude' => $b['longitude'],
+                    ]);
+                }
+            }
+
+            return $application;
+        });
 
         $user->update(['onboarding_state' => 'merchant_applied']);
 
