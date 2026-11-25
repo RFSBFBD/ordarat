@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AR_TRANSLATIONS } from '../../../core/constants/translations';
 import { ApiService } from '../../../core/services/api.service';
+import { squareLogoFromFile } from '../../../core/utils/logo-image';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -955,6 +956,70 @@ import { ApiService } from '../../../core/services/api.service';
         </div>
       </div>
 
+      <!-- MODAL: OPEN STORE ACCOUNT -->
+      <div class="modal-backdrop" *ngIf="showNewStoreModal()">
+        <div class="modal-dialog" style="max-height: 90vh; overflow-y: auto;">
+          <h4>{{ t.admin.stores.openStoreAccount }}</h4>
+          <p class="modal-desc">{{ t.admin.stores.openStoreDesc }}</p>
+
+          <div class="form-group">
+            <label>{{ t.admin.stores.storeName }} *</label>
+            <input type="text" [(ngModel)]="newStore.name" class="text-input" placeholder="مثال: مطعم الوردة" />
+          </div>
+
+          <div class="form-group">
+            <label>{{ t.admin.stores.storeType }} *</label>
+            <div style="display: flex; gap: 0.5rem;">
+              <button type="button" class="btn" [class.btn-primary]="newStore.type === 'restaurant'" [class.btn-outline]="newStore.type !== 'restaurant'" (click)="newStore.type = 'restaurant'">{{ t.admin.stores.typeRestaurant }}</button>
+              <button type="button" class="btn" [class.btn-primary]="newStore.type === 'grocery'" [class.btn-outline]="newStore.type !== 'grocery'" (click)="newStore.type = 'grocery'">{{ t.admin.stores.typeGrocery }}</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>لوجو النشاط *</label>
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <div style="width: 72px; height: 72px; border-radius: 16px; overflow: hidden; background: #f4efe6; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; font-size: 0.75rem;">
+                <img *ngIf="newStore.logo" [src]="newStore.logo" alt="" style="width: 100%; height: 100%; object-fit: cover;" />
+                <span *ngIf="!newStore.logo">مفيش لوجو</span>
+              </div>
+              <label class="btn btn-outline" style="cursor: pointer;">
+                اختار اللوجو
+                <input type="file" accept="image/png,image/jpeg,image/webp" (change)="onStoreLogo($event)" style="display: none;" />
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>رقم تليفون النشاط * <small>(مصري، ١١ رقم يبدأ بـ01)</small></label>
+            <input type="tel" inputmode="numeric" [(ngModel)]="newStore.phone" class="text-input" placeholder="01012345678" maxlength="11" />
+          </div>
+
+          <div class="form-group">
+            <label>المنطقة جوه مدينة قنا *</label>
+            <input type="text" [(ngModel)]="newStore.area" class="text-input" placeholder="مثال: وسط البلد، الحميدات" />
+          </div>
+
+          <div class="form-group">
+            <label>عنوان الفرع الرئيسي بالتفصيل *</label>
+            <input type="text" [(ngModel)]="newStore.address" class="text-input" placeholder="الشارع ورقم العقار وأقرب علامة" />
+          </div>
+
+          <div class="form-group">
+            <label>{{ t.admin.stores.ownerDetails }} (إيميل حساب صاحب النشاط المسجل) *</label>
+            <input type="email" [(ngModel)]="newStore.ownerEmail" class="text-input" placeholder="owner@example.com" />
+          </div>
+
+          <div *ngIf="storeCreationError" class="error-msg-box">{{ storeCreationError }}</div>
+
+          <div class="modal-actions">
+            <button class="btn btn-outline" (click)="closeStoreModal()">إلغاء</button>
+            <button class="btn btn-primary" [disabled]="storeSaving" (click)="createStore()">
+              {{ t.admin.stores.createAccountBtn }}
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- MODAL: CREATE BRANCH MANAGER -->
       <div class="modal-backdrop" *ngIf="showNewBranchManagerModal()">
         <div class="modal-dialog">
@@ -1605,6 +1670,9 @@ export class AdminDashboardComponent implements OnInit {
   >('stores');
   showNewStoreModal = signal<boolean>(false);
   showNewBranchManagerModal = signal<boolean>(false);
+  newStore = this.emptyStore();
+  storeCreationError = '';
+  storeSaving = false;
   showAiAnalyzePreviewModal = signal<boolean>(false);
   showAiAnalyzeResultModal = signal<boolean>(false);
   selectedOrderForOverride = signal<any | null>(null);
@@ -1912,6 +1980,77 @@ export class AdminDashboardComponent implements OnInit {
       rejected: 'معتذر عنه',
     };
     return map[status] || status;
+  }
+
+  emptyStore() {
+    return {
+      name: '',
+      type: '' as '' | 'restaurant' | 'grocery',
+      logo: '',
+      phone: '',
+      area: '',
+      address: '',
+      ownerEmail: '',
+    };
+  }
+
+  closeStoreModal() {
+    this.showNewStoreModal.set(false);
+    this.newStore = this.emptyStore();
+    this.storeCreationError = '';
+  }
+
+  async onStoreLogo(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    const data = await squareLogoFromFile(file);
+    this.storeCreationError = data ? '' : 'الصورة دي مش مناسبة. اختار صورة PNG أو JPG أو WebP أصغر من ٨ ميجا';
+    if (data) this.newStore.logo = data;
+    this.cdr.markForCheck();
+  }
+
+  createStore() {
+    const s = this.newStore;
+    this.storeCreationError = '';
+    if (!s.name.trim() || !s.type || !s.logo || !s.area.trim() || !s.address.trim() || !s.ownerEmail.trim()) {
+      this.storeCreationError = 'كمّل كل البيانات المطلوبة: الاسم والنوع واللوجو والمنطقة والعنوان وإيميل المالك';
+      return;
+    }
+    if (!/^01[0125][0-9]{8}$/.test(s.phone)) {
+      this.storeCreationError = 'رقم التليفون لازم يكون مصري (يبدأ بـ01 ويتكوّن من ١١ رقم)';
+      return;
+    }
+    this.storeSaving = true;
+    this.api
+      .createAdminStore({
+        name: s.name.trim(),
+        type: s.type,
+        owner_email: s.ownerEmail.trim(),
+        branch_name: 'الفرع الرئيسي',
+        branch_address: s.address.trim(),
+        branch_phone: s.phone,
+        area_name: s.area.trim(),
+        logo: s.logo,
+      })
+      .subscribe({
+        next: (store) => {
+          this.storeSaving = false;
+          this.actionSuccess = this.t.admin.stores.accountOpenedSuccess.replace('{name}', s.name.trim());
+          this.closeStoreModal();
+          this.stores = [
+            { id: store?.id, name: store?.name ?? s.name, type: s.type, owner: store?.users?.[0]?.name ?? '', phone: s.phone, active: true, is_frozen: false, freeze_reason: '' },
+            ...this.stores,
+          ];
+          this.cdr.markForCheck();
+        },
+        error: (err: { message?: string }) => {
+          this.storeSaving = false;
+          this.storeCreationError = err?.message || this.t.admin.stores.accountOpenError;
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   toggleStoreStatus(store: any) {

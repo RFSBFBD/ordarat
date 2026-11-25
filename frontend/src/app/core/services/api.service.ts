@@ -489,6 +489,21 @@ export class ApiService {
     return this.http.get<Envelope<any[]>>(`${this.base}/admin/stores`).pipe(this.unwrap<any[]>());
   }
 
+  createAdminStore(payload: {
+    name: string;
+    type: 'restaurant' | 'grocery';
+    owner_email: string;
+    branch_name: string;
+    branch_address: string;
+    branch_phone: string;
+    area_name: string;
+    logo: string;
+  }): Observable<any> {
+    return this.http
+      .post<Envelope<any>>(`${this.base}/admin/stores`, payload)
+      .pipe(this.unwrap<any>());
+  }
+
   toggleAdminStoreStatus(storeId: number, isActive: boolean, reason: string): Observable<any> {
     return this.http
       .patch<Envelope<any>>(`${this.base}/admin/stores/${storeId}/status`, {

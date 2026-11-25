@@ -79,6 +79,7 @@ describe('AdminDashboardComponent', () => {
       getAdminAiSettings: vi.fn().mockReturnValue(of({ kill_switch_active: false })),
       getAdminAiStoresQuota: vi.fn().mockReturnValue(of([{ id: 1, name: 'مطعم الكرنك', is_frozen: false }])),
       getAdminAiUsageLogs: vi.fn().mockReturnValue(of([])),
+      createAdminStore: vi.fn().mockReturnValue(of({ id: 55, name: 'مطعم جديد', users: [{ name: 'مالك' }] })),
       toggleAdminStoreStatus: vi.fn().mockReturnValue(of({})),
       toggleAdminCustomerStatus: vi.fn().mockReturnValue(of({})),
       overrideAdminOrderStatus: vi.fn().mockReturnValue(of({})),
@@ -166,6 +167,25 @@ describe('AdminDashboardComponent', () => {
     const created = component.branchManagers.find((b) => b.email === 'maana@karank.com');
     expect(created).toBeTruthy();
     expect(created.branchName).toBe('فرع المعنا');
+  });
+
+  it('opens the store account form and requires every field before calling the API', () => {
+    component.showNewStoreModal.set(true);
+    component.createStore();
+    expect(component.storeCreationError).toBeTruthy();
+    component.newStore = { name: 'مطعم جديد', type: 'restaurant', logo: 'data:image/webp;base64,AAAA', phone: '123', area: 'وسط البلد', address: 'شارع', ownerEmail: 'o@x.com' };
+    component.createStore();
+    expect(component.storeCreationError).toContain('مصري');
+    expect(api.createAdminStore).not.toHaveBeenCalled();
+  });
+
+  it('creates a store account through the API and lists it', () => {
+    component.newStore = { name: 'مطعم جديد', type: 'restaurant', logo: 'data:image/webp;base64,AAAA', phone: '01012345678', area: 'وسط البلد', address: 'شارع', ownerEmail: 'o@x.com' };
+    component.createStore();
+    expect(api.createAdminStore).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'مطعم جديد', type: 'restaurant', owner_email: 'o@x.com', branch_phone: '01012345678', area_name: 'وسط البلد' }),
+    );
+    expect(component.stores[0].name).toBe('مطعم جديد');
   });
 
   it('reloads analytics when the period changes', () => {

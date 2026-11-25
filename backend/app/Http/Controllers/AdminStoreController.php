@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\Store;
+use App\Models\User;
+use App\Support\BusinessLogo;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -41,34 +44,71 @@ class AdminStoreController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'type' => 'required|in:restaurant,grocery',
-            'owner_id' => 'required|exists:users,id',
+            'owner_id' => 'required_without:owner_email|nullable|exists:users,id',
+            'owner_email' => 'required_without:owner_id|nullable|email|exists:users,email',
             'branch_name' => 'required|string|max:255',
             'branch_address' => 'required|string|max:255',
-            'branch_phone' => 'nullable|string|max:20',
+            'branch_phone' => ['nullable', 'string', 'regex:/^01[0125][0-9]{8}$/'],
+            'area_name' => 'nullable|string|max:120',
+            'logo' => 'nullable|string',
+        ], [
+            'owner_email.exists' => 'مفيش حساب مسجل بالإيميل ده. صاحب النشاط لازم يسجّل الأول',
+            'branch_phone.regex' => 'الرقم لازم يكون مصري (يبدأ بـ01 ويتكوّن من ١١ رقم)',
         ]);
 
-        $store = Store::create([
-            'name' => $validated['name'],
-            'type' => $validated['type'],
-            'is_active' => true,
-            'is_accepting_orders' => true,
-        ]);
+        $owner = isset($validated['owner_id'])
+            ? User::findOrFail($validated['owner_id'])
+            : User::where('email', $validated['owner_email'])->firstOrFail();
 
-        $store->users()->attach($validated['owner_id']);
+        $logoData = null;
+        if (! empty($validated['logo'])) {
+            if (BusinessLogo::decode($validated['logo']) === null) {
+                return response()->json([
+                    'success' => false,
+                    'error' => [
+                        'code' => 'INVALID_LOGO',
+                        'message' => 'اللوجو لازم يكون صورة PNG أو JPG أو WebP، مقاس بين ٣٢ و١٠٢٤ بكسل، وحجمها أقل من ١٥٠ كيلوبايت',
+                    ],
+                ], 422);
+            }
+            $logoData = $validated['logo'];
+        }
 
-        $store->branches()->create([
-            'name' => $validated['branch_name'],
-            'address' => $validated['branch_address'],
-            'phone' => $validated['branch_phone'] ?? null,
-            'is_active' => true,
-        ]);
+        $address = ! empty($validated['area_name'])
+            ? $validated['area_name'].' - '.$validated['branch_address']
+            : $validated['branch_address'];
+
+        $store = DB::transaction(function () use ($validated, $owner, $logoData, $address) {
+            $store = Store::create([
+                'name' => $validated['name'],
+                'type' => $validated['type'],
+                'is_active' => true,
+                'is_accepting_orders' => true,
+                'logo_data' => $logoData,
+            ]);
+
+            $store->users()->syncWithoutDetaching([$owner->id]);
+
+            $store->branches()->create([
+                'name' => $validated['branch_name'],
+                'address' => $address,
+                'phone' => $validated['branch_phone'] ?? null,
+                'is_active' => true,
+            ]);
+
+            if ($owner->role === 'customer') {
+                $owner->update(['role' => 'merchant', 'onboarding_state' => 'merchant_approved']);
+            }
+
+            return $store;
+        });
 
         AuditLog::create([
             'user_id' => $request->user()->id,
             'action' => 'OPEN_STORE_ACCOUNT',
             'auditable_type' => Store::class,
             'auditable_id' => $store->id,
-            'new_values' => ['name' => $store->name, 'type' => $store->type, 'owner_id' => $validated['owner_id']],
+            'new_values' => ['name' => $store->name, 'type' => $store->type, 'owner_id' => $owner->id],
             'ip_address' => $request->ip(),
         ]);
 

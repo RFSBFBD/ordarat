@@ -292,4 +292,44 @@ class AdminDashboardTest extends TestCase
             ->assertJsonPath('success', true);
         $this->assertNotEmpty($response->json('data'));
     }
+
+    public function test_admin_opens_store_account_by_owner_email_with_logo_and_area(): void
+    {
+        $admin = $this->admin;
+        $owner = \App\Models\User::factory()->create(['role' => 'customer', 'email' => 'owner@example.test']);
+
+        $response = $this->actingAs($admin)->postJson('/api/admin/stores', [
+            'name' => 'مطعم الإدارة',
+            'type' => 'restaurant',
+            'owner_email' => 'owner@example.test',
+            'branch_name' => 'الفرع الرئيسي',
+            'branch_address' => 'شارع الجمهورية',
+            'branch_phone' => '01012345678',
+            'area_name' => 'وسط البلد',
+            'logo' => \Tests\TestCase::logoDataUrl(),
+        ]);
+
+        $response->assertStatus(201);
+        $store = \App\Models\Store::where('name', 'مطعم الإدارة')->firstOrFail();
+        $this->assertNotNull($store->getRawOriginal('logo_data'));
+        $this->assertSame('وسط البلد - شارع الجمهورية', $store->branches()->first()->address);
+        $this->assertSame('merchant', $owner->fresh()->role);
+        $this->assertTrue($store->users()->where('users.id', $owner->id)->exists());
+    }
+
+    public function test_admin_open_store_rejects_unknown_owner_bad_phone_and_bad_logo_without_partial_rows(): void
+    {
+        $admin = $this->admin;
+        \App\Models\User::factory()->create(['role' => 'customer', 'email' => 'owner@example.test']);
+        $base = [
+            'name' => 'مطعم فاشل', 'type' => 'restaurant', 'owner_email' => 'owner@example.test',
+            'branch_name' => 'الرئيسي', 'branch_address' => 'قنا', 'branch_phone' => '01012345678',
+        ];
+
+        $this->actingAs($admin)->postJson('/api/admin/stores', ['owner_email' => 'nobody@example.test'] + $base)->assertStatus(422);
+        $this->actingAs($admin)->postJson('/api/admin/stores', ['branch_phone' => '123'] + $base)->assertStatus(422);
+        $this->actingAs($admin)->postJson('/api/admin/stores', ['logo' => 'data:image/png;base64,AAAA'] + $base)
+            ->assertStatus(422)->assertJsonPath('error.code', 'INVALID_LOGO');
+        $this->assertDatabaseMissing('stores', ['name' => 'مطعم فاشل']);
+    }
 }

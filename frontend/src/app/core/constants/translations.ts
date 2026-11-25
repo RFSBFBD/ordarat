@@ -256,6 +256,7 @@ export const AR_TRANSLATIONS = {
       filterType: 'النوع',
       filterStatus: 'الحالة',
       openStoreAccount: 'فتح حساب متجر',
+      openStoreDesc: 'يتفتح النشاط مفعّل على طول وصاحبه بياخد صلاحية صاحب نشاط. صاحب النشاط لازم يكون سجّل حساب قبل كده.',
       storeName: 'اسم النشاط',
       storeType: 'نوع النشاط',
       typeRestaurant: 'مطعم',
