@@ -41,6 +41,12 @@ export const ONBOARDING_STYLES = `
     color: var(--color-text);
     font-size: 0.95rem;
   }
+  .field-hint {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--color-text-muted, #6b6b6b);
+  }
   .input-field {
     width: 100%;
     padding: 0.75rem 0.95rem;

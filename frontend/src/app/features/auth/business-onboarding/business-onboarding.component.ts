@@ -73,6 +73,7 @@ import { ONBOARDING_STYLES } from '../onboarding.styles';
               {{ t.businessOnboarding.typeGrocery }}
             </button>
           </div>
+          <span *ngIf="showErrors && !type" class="error-text">{{ t.businessOnboarding.typeRequired }}</span>
         </div>
 
         <div class="form-group">
@@ -91,14 +92,25 @@ import { ONBOARDING_STYLES } from '../onboarding.styles';
 
         <div class="form-group">
           <label class="label">{{ t.businessOnboarding.areaLabel }} *</label>
+          <select [(ngModel)]="markaz" class="input-field" name="markaz">
+            <option value="" disabled>{{ t.businessOnboarding.areaPlaceholder }}</option>
+            <option *ngFor="let m of markazList" [value]="m">{{ m }}</option>
+          </select>
+          <span *ngIf="showErrors && !markaz" class="error-text">
+            {{ t.businessOnboarding.areaRequired }}
+          </span>
+        </div>
+
+        <div class="form-group">
+          <label class="label">{{ t.businessOnboarding.neighborhoodLabel }} *</label>
           <input
             type="text"
-            [(ngModel)]="areaName"
+            [(ngModel)]="neighborhood"
             class="input-field"
-            [placeholder]="t.businessOnboarding.areaPlaceholder"
+            [placeholder]="t.businessOnboarding.neighborhoodPlaceholder"
           />
-          <span *ngIf="showErrors && !areaName" class="error-text">
-            {{ t.businessOnboarding.areaRequired }}
+          <span *ngIf="showErrors && !neighborhood.trim()" class="error-text">
+            {{ t.businessOnboarding.neighborhoodRequired }}
           </span>
         </div>
 
@@ -116,7 +128,7 @@ import { ONBOARDING_STYLES } from '../onboarding.styles';
         </div>
 
         <div class="form-group">
-          <label class="label">{{ t.businessOnboarding.branchesLabel }}</label>
+          <label class="label">{{ t.businessOnboarding.branchesLabel }} *</label>
           <div class="choices-row">
             <button
               type="button"
@@ -135,6 +147,10 @@ import { ONBOARDING_STYLES } from '../onboarding.styles';
               {{ t.businessOnboarding.branchesNo }}
             </button>
           </div>
+          <span *ngIf="hasBranches === true" class="field-hint">{{ t.businessOnboarding.branchesNote }}</span>
+          <span *ngIf="showErrors && hasBranches === null" class="error-text">
+            {{ t.businessOnboarding.branchesRequired }}
+          </span>
         </div>
 
         <div class="location-box">
@@ -188,9 +204,12 @@ export class BusinessOnboardingComponent implements OnInit {
   businessName = '';
   logoData = '';
   logoError = '';
-  type: 'restaurant' | 'grocery' = 'restaurant';
+  type: 'restaurant' | 'grocery' | '' = '';
+  /** The nine markaz of Qena governorate (qena.gov.eg administrative division, north to south). */
+  readonly markazList = ['أبو تشت', 'فرشوط', 'نجع حمادي', 'دشنا', 'الوقف', 'قنا', 'قفط', 'قوص', 'نقادة'];
+  markaz = '';
+  neighborhood = '';
   phone = '';
-  areaName = '';
   address = '';
   hasBranches: boolean | null = null;
   showErrors = false;
@@ -298,20 +317,23 @@ export class BusinessOnboardingComponent implements OnInit {
   submit(): void {
     this.showErrors = true;
     this.submitError = '';
-    if (!this.logoData || !this.businessName || !this.isPhoneValid() || !this.areaName || !this.address || !this.hasLocation) {
+    if (
+      !this.logoData || !this.businessName || !this.type || !this.isPhoneValid() ||
+      !this.markaz || !this.neighborhood.trim() || !this.address || this.hasBranches === null || !this.hasLocation
+    ) {
       return;
     }
     this.isSaving = true;
     this.api
       .submitMerchantApplication({
         business_name: this.businessName,
-        type: this.type,
+        type: this.type as 'restaurant' | 'grocery',
         phone: this.phone,
         address: this.address,
         latitude: this.latitude,
         longitude: this.longitude,
         has_branches: this.hasBranches === true,
-        area_name: this.areaName,
+        area_name: `${this.markaz} - ${this.neighborhood.trim()}`,
         logo: this.logoData,
       })
       .subscribe({

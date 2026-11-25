@@ -6,6 +6,7 @@ import { AuthService, authErrorMessage } from '../../core/services/auth.service'
 import { profileGateGuard } from '../../core/guards/auth.guard';
 import { LoginComponent } from './login/login.component';
 import { RegisterComponent } from './register/register.component';
+import { BusinessOnboardingComponent } from './business-onboarding/business-onboarding.component';
 import { ForgotPasswordComponent } from './forgot-password/forgot-password.component';
 
 function fakeAuth(over: Record<string, unknown> = {}) {
@@ -180,5 +181,22 @@ describe('profileGateGuard', () => {
       TestBed.resetTestingModule();
       expect(await run(auth)).toBe(true);
     }
+  });
+});
+
+describe('BusinessOnboardingComponent', () => {
+  it('has no preselected type, a Qena markaz list, phone, logo and branches question', () => {
+    const auth = fakeAuth();
+    auth.firebaseUser.set({ emailVerified: true });
+    auth.profile.set({ role: 'customer', profile_completed: false });
+    const f = setup(BusinessOnboardingComponent, auth);
+    const c = f.componentInstance as BusinessOnboardingComponent;
+    const el = f.nativeElement as HTMLElement;
+    expect(c.type).toBe('');
+    expect(c.markazList.length).toBe(9);
+    expect(el.querySelector('select')).toBeTruthy();
+    expect(el.querySelector('input[type="file"]')).toBeTruthy();
+    expect(el.querySelector('input[type="tel"]')).toBeTruthy();
+    expect(el.textContent).toContain('أيوه عندي فروع');
   });
 });

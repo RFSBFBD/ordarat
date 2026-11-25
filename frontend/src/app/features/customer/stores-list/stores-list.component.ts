@@ -5,6 +5,7 @@ import { AR_TRANSLATIONS } from '../../../core/constants/translations';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../shared/components/error-state/error-state.component';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { LoadingService } from '../../../core/services/loading.service';
 import { ApiPendingBusiness, ApiService, ApiStore } from '../../../core/services/api.service';
 
 const PLACEHOLDER_IMG =
@@ -28,7 +29,7 @@ interface StoreCard {
         <button
           class="tab-btn"
           [class.active]="selectedTab === 'restaurants'"
-          (click)="selectedTab = 'restaurants'"
+          (click)="switchTab('restaurants')"
         >
           <app-icon name="utensils" [size]="18" />
           {{ t.customer.storesList.tabs.restaurants }}
@@ -36,7 +37,7 @@ interface StoreCard {
         <button
           class="tab-btn"
           [class.active]="selectedTab === 'groceries'"
-          (click)="selectedTab = 'groceries'"
+          (click)="switchTab('groceries')"
         >
           <app-icon name="shopping-basket" [size]="18" />
           {{ t.customer.storesList.tabs.groceries }}
@@ -51,11 +52,8 @@ interface StoreCard {
         [attr.aria-label]="t.customer.storesList.loading"
       >
         <div class="store-card skeleton-card" *ngFor="let i of skeletonCards">
-          <div class="skeleton skeleton-img"></div>
-          <div class="store-body">
-            <div class="skeleton skeleton-line wide"></div>
-            <div class="skeleton skeleton-line narrow"></div>
-          </div>
+          <div class="skeleton skeleton-logo"></div>
+          <div class="skeleton skeleton-line wide"></div>
         </div>
       </div>
 
@@ -83,15 +81,6 @@ interface StoreCard {
             />
           </div>
           <h3 class="store-name">{{ card.name }}</h3>
-          <span *ngIf="card.pending" class="soon-badge">{{ t.customer.storesList.pendingBadge }}</span>
-          <span
-            *ngIf="!card.pending"
-            class="status-badge"
-            [class.open]="card.open"
-            [class.closed]="!card.open"
-          >
-            {{ card.open ? t.customer.storesList.statusOpen : t.customer.storesList.statusClosed }}
-          </span>
         </div>
       </div>
 
@@ -146,41 +135,38 @@ interface StoreCard {
       }
       .stores-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
-        gap: 1.5rem;
+        grid-template-columns: repeat(auto-fill, minmax(min(150px, 45%), 1fr));
+        gap: 1.75rem 1rem;
       }
-      .store-card {
-        background: #ffffff;
-        border-radius: 12px;
-        overflow: hidden;
-        border: 1px solid var(--color-border);
-        cursor: pointer;
-        transition:
-          transform 0.2s,
-          box-shadow 0.2s;
-      }
-      .store-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
-      }
+      /* No card: just the logo with the name under it. */
       .store-card {
         display: flex;
         flex-direction: column;
         align-items: center;
         text-align: center;
-        padding: 1.25rem 1rem 1rem;
-        gap: 0.6rem;
+        gap: 0.65rem;
+        padding: 0;
+        background: none;
+        border: 0;
+        cursor: pointer;
+      }
+      .store-card:hover .logo-wrap {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
       }
       .logo-wrap {
-        width: 112px;
-        height: 112px;
-        border-radius: 24px;
+        width: 120px;
+        height: 120px;
+        border-radius: 26px;
         background: #f4efe6;
         border: 1px solid var(--color-border);
         overflow: hidden;
         display: flex;
         align-items: center;
         justify-content: center;
+        transition:
+          transform 0.2s,
+          box-shadow 0.2s;
       }
       .logo-img {
         width: 100%;
@@ -190,49 +176,24 @@ interface StoreCard {
       .store-name {
         margin: 0;
         font-family: var(--font-heading);
-        font-size: 1.1rem;
+        font-size: 1.05rem;
+        line-height: 1.4;
         color: var(--color-text);
       }
       .pending-card {
         cursor: default;
-        opacity: 0.92;
+        opacity: 0.55;
       }
-      .pending-card:hover {
+      .pending-card:hover .logo-wrap {
         transform: none;
         box-shadow: none;
-      }
-      .soon-badge {
-        padding: 0.25rem 0.65rem;
-        border-radius: 6px;
-        font-size: 0.8rem;
-        font-weight: 700;
-        background: #fdf1d6;
-        color: #8a5a00;
-      }
-      .status-badge {
-        padding: 0.25rem 0.65rem;
-        border-radius: 6px;
-        font-size: 0.8rem;
-        font-weight: 700;
-      }
-      .status-badge.open {
-        background: rgba(40, 167, 69, 0.9);
-        color: #fff;
-      }
-      .status-badge.closed {
-        background: rgba(108, 117, 125, 0.9);
-        color: #fff;
-      }
-      .store-body {
-        padding: 1rem;
       }
       .skeleton-card {
         cursor: default;
         pointer-events: none;
       }
-      .skeleton-card:hover {
+      .skeleton-card:hover .logo-wrap {
         transform: none;
-        box-shadow: none;
       }
       .skeleton {
         background: linear-gradient(90deg, #f1ead9 25%, #faf6ec 45%, #f1ead9 65%);
@@ -240,9 +201,10 @@ interface StoreCard {
         animation: shimmer 1.3s ease-in-out infinite;
         border-radius: 6px;
       }
-      .skeleton-img {
-        height: 160px;
-        border-radius: 0;
+      .skeleton-logo {
+        width: 120px;
+        height: 120px;
+        border-radius: 26px;
       }
       .skeleton-line {
         height: 14px;
@@ -251,10 +213,6 @@ interface StoreCard {
       .skeleton-line.wide {
         width: 70%;
       }
-      .skeleton-line.narrow {
-        width: 40%;
-        margin-bottom: 0;
-      }
       @keyframes shimmer {
         0% {
           background-position: 200% 0;
@@ -262,17 +220,6 @@ interface StoreCard {
         100% {
           background-position: -200% 0;
         }
-      }
-      .store-name {
-        margin: 0 0 0.25rem 0;
-        font-family: var(--font-heading);
-        font-size: 1.15rem;
-        color: var(--color-text);
-      }
-      .store-type {
-        margin: 0;
-        font-size: 0.85rem;
-        color: var(--color-text-muted);
       }
     `,
   ],
@@ -294,8 +241,25 @@ export class StoresListComponent implements OnInit {
   errorTitle = 'الخدمة مش متاحة دلوقتي';
   readonly skeletonCards = [1, 2, 3, 4, 5, 6];
 
+  private readonly loadingService = inject(LoadingService);
+
   ngOnInit(): void {
     this.loadStores();
+  }
+
+  /** Switching between restaurants and stores shows the branded loading screen for a moment. */
+  switchTab(tab: 'restaurants' | 'groceries'): void {
+    if (tab === this.selectedTab) {
+      return;
+    }
+    this.loadingService.show(
+      tab === 'restaurants' ? 'جاري تحميل المطاعم...' : 'جاري تحميل المتاجر...',
+    );
+    setTimeout(() => {
+      this.selectedTab = tab;
+      this.loadingService.hide();
+      this.cdr.markForCheck();
+    }, 600);
   }
 
   loadStores(): void {
