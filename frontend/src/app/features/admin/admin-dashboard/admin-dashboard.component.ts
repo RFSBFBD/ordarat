@@ -322,7 +322,15 @@ import { squareLogoFromFile } from '../../../core/utils/logo-image';
                 <td>{{ req.area_name }}</td>
                 <td class="ltr">{{ req.phone }}</td>
                 <td>{{ req.address }}</td>
-                <td>{{ req.has_branches ? t.admin.joinRequests.yes : t.admin.joinRequests.no }}</td>
+                <td>
+                  {{ req.has_branches ? t.admin.joinRequests.yes : t.admin.joinRequests.no }}
+                  <div *ngFor="let br of req.extra_branches || []" class="extra-branch">
+                    <small>
+                      <strong>{{ br.name }}</strong> - {{ br.address }}
+                      <span *ngIf="br.phone" class="ltr">({{ br.phone }})</span>
+                    </small>
+                  </div>
+                </td>
                 <td>{{ req.created_at | date: 'short' }}</td>
                 <td *ngIf="req.status === 'pending'">
                   <button class="btn btn-primary btn-sm" (click)="approveJoinRequest(req)">
@@ -1860,7 +1868,12 @@ export class AdminDashboardComponent implements OnInit {
     this.api.approveMerchantApplication(req.id).subscribe({
       next: () => {
         req.status = 'approved';
-        this.actionSuccess = this.t.admin.joinRequests.approvedSuccess + ': ' + req.business_name;
+        const message = this.t.admin.joinRequests.approvedSuccess + ': ' + req.business_name;
+        this.actionSuccess = message;
+        // The approval created a real store and branches: refresh the stores,
+        // branch managers and counters so the admin sees them immediately.
+        this.loadAll();
+        this.actionSuccess = message;
         this.cdr.markForCheck();
       },
       error: (err: { message?: string }) => {
