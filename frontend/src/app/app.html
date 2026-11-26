@@ -59,7 +59,7 @@
           <a routerLink="/admin/dashboard" routerLinkActive="active" class="nav-item">الأدمن</a>
         }
 
-        <a routerLink="/auth/login" class="btn btn-secondary">سجّل نشاطك</a>
+        <a routerLink="/auth/register" [queryParams]="{ type: 'business' }" class="btn btn-secondary">سجّل نشاطك</a>
 
         @if (auth.isLoggedIn()) {
           <span class="user-chip">

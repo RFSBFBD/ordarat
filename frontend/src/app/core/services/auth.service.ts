@@ -384,6 +384,21 @@ export class AuthService {
    * Where a signed-in user belongs. All decisions come from the
    * server-confirmed profile, never from anything the browser claims.
    */
+  /** What the person said they came to do on the sign-up page (kept across the email-verification step). */
+  signupIntent(): 'customer' | 'business' | null {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    const v = localStorage.getItem('ordarat.signup_intent');
+    return v === 'customer' || v === 'business' ? v : null;
+  }
+
+  setSignupIntent(intent: 'customer' | 'business'): void {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ordarat.signup_intent', intent);
+    }
+  }
+
   postLoginTarget(returnUrl?: string | null): string {
     const profile = this.profile();
     const safeReturn =
@@ -416,7 +431,8 @@ export class AuthService {
       profile.onboarding_state === 'new' ||
       profile.onboarding_state === 'merchant_rejected'
     ) {
-      return '/auth/welcome';
+      const intent = this.signupIntent();
+      return intent ? `/auth/onboarding/${intent}` : '/auth/welcome';
     }
 
     return safeReturn ?? '/';

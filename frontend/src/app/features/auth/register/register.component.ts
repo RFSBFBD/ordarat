@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AR_TRANSLATIONS } from '../../../core/constants/translations';
 import { AuthService, authErrorMessage } from '../../../core/services/auth.service';
-import { AUTH_FORM_STYLES, AuthBrandComponent, GoogleButtonComponent } from '../shared/auth-ui';
+import { AUTH_FORM_STYLES, AccountTypeSwitchComponent, AuthBrandComponent, GoogleButtonComponent } from '../shared/auth-ui';
 
 /**
  * Create an account with email + password (verified by an email link) or
@@ -13,11 +13,12 @@ import { AUTH_FORM_STYLES, AuthBrandComponent, GoogleButtonComponent } from '../
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, AuthBrandComponent, GoogleButtonComponent],
+  imports: [CommonModule, FormsModule, RouterLink, AuthBrandComponent, AccountTypeSwitchComponent, GoogleButtonComponent],
   template: `
     <div class="onboarding-wrapper">
       <form class="onboarding-card auth-card" (ngSubmit)="register()" novalidate>
         <app-auth-brand />
+        <app-account-type-switch [value]="accountType" (valueChange)="setType($event)" />
         <h2 class="title">{{ t.emailAuth.registerTitle }}</h2>
         <p class="desc">{{ t.emailAuth.registerDesc }}</p>
 
@@ -92,10 +93,22 @@ export class RegisterComponent implements OnInit {
   confirm = '';
   showErrors = false;
   errorMessage = '';
+  accountType: 'customer' | 'business' = 'customer';
   private returnUrl: string | null = null;
+
+  setType(v: 'customer' | 'business'): void {
+    this.accountType = v;
+    this.auth.setSignupIntent(v);
+  }
 
   ngOnInit(): void {
     this.returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+    const q = this.route.snapshot.queryParamMap.get('type');
+    if (q === 'customer' || q === 'business') {
+      this.setType(q);
+    } else {
+      this.accountType = this.auth.signupIntent() ?? 'customer';
+    }
     this.auth.whenReady().then(() => {
       if (this.auth.isLoggedIn()) {
         this.router.navigateByUrl(this.auth.postLoginTarget(this.returnUrl));

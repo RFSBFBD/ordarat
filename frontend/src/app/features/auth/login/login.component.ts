@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AR_TRANSLATIONS } from '../../../core/constants/translations';
 import { AuthService, authErrorMessage } from '../../../core/services/auth.service';
-import { AUTH_FORM_STYLES, AuthBrandComponent, GoogleButtonComponent } from '../shared/auth-ui';
+import { AUTH_FORM_STYLES, AccountTypeSwitchComponent, AuthBrandComponent, GoogleButtonComponent } from '../shared/auth-ui';
 
 /**
  * ONE sign-in page for everyone: email + password, or Google. The API
@@ -13,11 +13,12 @@ import { AUTH_FORM_STYLES, AuthBrandComponent, GoogleButtonComponent } from '../
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, AuthBrandComponent, GoogleButtonComponent],
+  imports: [CommonModule, FormsModule, RouterLink, AuthBrandComponent, AccountTypeSwitchComponent, GoogleButtonComponent],
   template: `
     <div class="onboarding-wrapper">
       <form class="onboarding-card auth-card" (ngSubmit)="signIn()" novalidate>
         <app-auth-brand />
+        <app-account-type-switch [value]="accountType" (valueChange)="setType($event)" />
 
         <div *ngIf="deniedMessage" class="error-box">{{ deniedMessage }}</div>
 
@@ -81,10 +82,22 @@ export class LoginComponent implements OnInit {
   errorMessage = '';
   deniedMessage = '';
   showProfileRetry = false;
+  accountType: 'customer' | 'business' = 'customer';
   private returnUrl: string | null = null;
+
+  setType(v: 'customer' | 'business'): void {
+    this.accountType = v;
+    this.auth.setSignupIntent(v);
+  }
 
   ngOnInit(): void {
     this.returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+    const q = this.route.snapshot.queryParamMap.get('type');
+    if (q === 'customer' || q === 'business') {
+      this.setType(q);
+    } else {
+      this.accountType = this.auth.signupIntent() ?? 'customer';
+    }
     if (this.route.snapshot.queryParamMap.get('denied') === '1') {
       this.deniedMessage =
         'الصفحة دي محتاجة حساب له صلاحية الوصول ليها. سجّل دخولك ولو حسابك له صلاحية هتوصلها على طول.';

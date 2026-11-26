@@ -21,6 +21,8 @@ function fakeAuth(over: Record<string, unknown> = {}) {
     needsEmailVerification: computed(() => !!firebaseUser() && firebaseUser().emailVerified === false),
     whenReady: () => Promise.resolve(),
     postLoginTarget: vi.fn(() => '/'),
+    signupIntent: vi.fn(() => null),
+    setSignupIntent: vi.fn(),
     signInWithEmail: vi.fn(async () => ({ ok: true })),
     signInWithGoogle: vi.fn(async () => ({ ok: true })),
     registerWithEmail: vi.fn(async () => ({ ok: true })),
@@ -230,5 +232,49 @@ describe('BusinessOnboardingComponent', () => {
     expect(c.isBranchValid(c.branches[0])).toBe(false);
     c.removeBranch(0);
     expect(c.branches.length).toBe(0);
+  });
+});
+
+
+describe('sign-up type switch', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('register shows the switch; picking business stores the intent', () => {
+    const auth = fakeAuth();
+    const fixture = setup(RegisterComponent, auth);
+    const el = fixture.nativeElement as HTMLElement;
+    const opts = el.querySelectorAll('.type-opt');
+    expect(opts.length).toBe(2);
+    expect(opts[0].textContent).toContain('اطلب');
+    (opts[1] as HTMLElement).click();
+    expect(auth.setSignupIntent).toHaveBeenCalledWith('business');
+  });
+
+  it('login also shows the switch', () => {
+    const el = setup(LoginComponent, fakeAuth()).nativeElement as HTMLElement;
+    expect(el.querySelectorAll('.type-opt').length).toBe(2);
+  });
+
+  function target(intent: string | null, profile: any) {
+    const fake: any = {
+      profile: () => profile,
+      needsEmailVerification: () => false,
+      signupIntent: () => intent,
+    };
+    return AuthService.prototype.postLoginTarget.call(fake);
+  }
+  const fresh = { role: 'customer', profile_complete: false, onboarding_state: 'new' };
+
+  it('a new account goes straight to the form it chose, else to the welcome cards', () => {
+    expect(target('business', fresh)).toBe('/auth/onboarding/business');
+    expect(target('customer', fresh)).toBe('/auth/onboarding/customer');
+    expect(target(null, fresh)).toBe('/auth/welcome');
+  });
+
+  it('an intent never overrides role, pending application or a finished profile', () => {
+    expect(target('business', { role: 'admin' })).toBe('/admin/dashboard');
+    expect(target('business', { role: 'merchant' })).toBe('/store/dashboard');
+    expect(target('business', { role: 'customer', merchant_application_status: 'pending' })).toBe('/auth/pending');
+    expect(target('business', { role: 'customer', profile_complete: true, onboarding_state: 'customer' })).toBe('/');
   });
 });

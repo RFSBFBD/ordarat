@@ -85,3 +85,32 @@ export class GoogleButtonComponent {
   @Input() disabled = false;
   @Output() pressed = new EventEmitter<void>();
 }
+
+
+/** Two-option switch at the top of sign-up / sign-in: customer or business owner. */
+@Component({
+  selector: 'app-account-type-switch',
+  standalone: true,
+  template: `
+    <div class="type-switch" role="radiogroup" aria-label="نوع الحساب">
+      <button type="button" role="radio" class="type-opt" [class.on]="value === 'customer'"
+        [attr.aria-checked]="value === 'customer'" (click)="pick('customer')">جعان؟ اطلب</button>
+      <button type="button" role="radio" class="type-opt" [class.on]="value === 'business'"
+        [attr.aria-checked]="value === 'business'" (click)="pick('business')">عندي مطعم أو بقالة</button>
+    </div>
+  `,
+  styles: [`
+    .type-switch { display: flex; gap: 0.4rem; background: #eef3f4; padding: 0.3rem; border-radius: 12px; margin-bottom: 1rem; }
+    .type-opt { flex: 1; border: 0; background: transparent; padding: 0.65rem 0.5rem; border-radius: 9px;
+      font: inherit; font-weight: 700; color: var(--color-primary); cursor: pointer; }
+    .type-opt.on { background: var(--color-primary); color: #fff; }
+  `],
+})
+export class AccountTypeSwitchComponent {
+  @Input() value: 'customer' | 'business' = 'customer';
+  @Output() valueChange = new EventEmitter<'customer' | 'business'>();
+  pick(v: 'customer' | 'business'): void {
+    this.value = v;
+    this.valueChange.emit(v);
+  }
+}
