@@ -81,6 +81,7 @@ describe('AdminDashboardComponent', () => {
       getAdminAiUsageLogs: vi.fn().mockReturnValue(of([])),
       createAdminStore: vi.fn().mockReturnValue(of({ id: 55, name: 'مطعم جديد', users: [{ name: 'مالك' }] })),
       toggleAdminStoreStatus: vi.fn().mockReturnValue(of({})),
+      setStoreSubscription: vi.fn().mockReturnValue(of({ subscription_active: true, subscription_ends_at: '2026-12-31' })),
       toggleAdminCustomerStatus: vi.fn().mockReturnValue(of({})),
       overrideAdminOrderStatus: vi.fn().mockReturnValue(of({})),
       createAdminBranchManager: vi.fn().mockReturnValue(of({ id: 77 })),
@@ -199,5 +200,28 @@ describe('AdminDashboardComponent', () => {
     component.toggleKillSwitch();
     expect(api.toggleAdminAiKillSwitch).toHaveBeenCalledWith(true);
     expect(component.aiKillSwitchActive).toBe(true);
+  });
+
+  it('activates a manual subscription with an end date (no payment) and can end it', () => {
+    const promptMock = vi.spyOn(window, 'prompt').mockReturnValue('2026-12-31');
+    const store = component.stores[0];
+    component.activateSubscription(store);
+    expect(api.setStoreSubscription).toHaveBeenCalledWith(store.id, { active: true, ends_at: '2026-12-31' });
+    expect(store.subscriptionActive).toBe(true);
+    expect(store.subscriptionEnds).toBe('2026-12-31');
+    promptMock.mockRestore();
+
+    const confirmMock = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    component.endSubscription(store);
+    expect(api.setStoreSubscription).toHaveBeenCalledWith(store.id, { active: false });
+    expect(store.subscriptionActive).toBe(false);
+    confirmMock.mockRestore();
+  });
+
+  it('rejects a malformed end date without calling the API', () => {
+    const promptMock = vi.spyOn(window, 'prompt').mockReturnValue('31/12/2026');
+    component.activateSubscription(component.stores[0]);
+    expect(api.setStoreSubscription).not.toHaveBeenCalled();
+    promptMock.mockRestore();
   });
 });

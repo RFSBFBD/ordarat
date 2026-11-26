@@ -33,7 +33,7 @@ class AdminStoreController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $query->latest()->get(),
+            'data' => $query->latest()->get()->each->makeVisible(['commercial_register', 'subscription_starts_at', 'subscription_ends_at']),
         ]);
     }
 
@@ -116,6 +116,43 @@ class AdminStoreController extends Controller
             'success' => true,
             'data' => $store->load(['branches', 'users']),
         ], 201);
+    }
+
+    /** Manual subscription: the admin sets the dates, or clears it. Nothing is charged. */
+    public function updateSubscription(Request $request, Store $store): JsonResponse
+    {
+        Gate::authorize('create', Store::class);
+
+        $validated = $request->validate([
+            'active' => 'required|boolean',
+            'starts_at' => 'nullable|date',
+            'ends_at' => 'nullable|date|after_or_equal:starts_at',
+        ], [
+            'ends_at.after_or_equal' => 'تاريخ النهاية لازم يكون بعد تاريخ البداية',
+        ]);
+
+        $old = ['starts_at' => $store->subscription_starts_at?->toDateString(), 'ends_at' => $store->subscription_ends_at?->toDateString()];
+
+        if ($validated['active']) {
+            $store->update([
+                'subscription_starts_at' => $validated['starts_at'] ?? now()->toDateString(),
+                'subscription_ends_at' => $validated['ends_at'] ?? null,
+            ]);
+        } else {
+            $store->update(['subscription_starts_at' => null, 'subscription_ends_at' => null]);
+        }
+
+        AuditLog::create([
+            'user_id' => $request->user()->id,
+            'action' => $validated['active'] ? 'ACTIVATE_SUBSCRIPTION' : 'END_SUBSCRIPTION',
+            'auditable_type' => Store::class,
+            'auditable_id' => $store->id,
+            'old_values' => $old,
+            'new_values' => ['starts_at' => $store->subscription_starts_at?->toDateString(), 'ends_at' => $store->subscription_ends_at?->toDateString()],
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json(['success' => true, 'data' => $store->fresh()->makeVisible(['subscription_starts_at', 'subscription_ends_at'])]);
     }
 
     public function toggleStatus(Request $request, Store $store): JsonResponse

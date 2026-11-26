@@ -5,7 +5,7 @@ import { MerchantDashboardComponent } from './merchant-dashboard.component';
 import { ApiService } from '../../../core/services/api.service';
 
 const storesResponse = [
-  { id: 1, name: 'مطعم الكرنك الأصيل (قنا)', type: 'restaurant', is_active: true, is_accepting_orders: true, working_hours: { from: '09:00', to: '23:00' } },
+  { id: 1, name: 'مطعم الكرنك الأصيل (قنا)', type: 'restaurant', is_active: true, is_accepting_orders: true, subscription_active: true, working_hours: { from: '09:00', to: '23:00' } },
 ];
 
 const branchesResponse = [
@@ -154,5 +154,29 @@ describe('MerchantDashboardComponent', () => {
     component.saveNewProduct();
     expect(api.createMerchantProduct).toHaveBeenCalledWith(1, { name: 'صنف جديد', price: 50, description: '' });
     expect(component.products[0].id).toBe(99);
+  });
+
+  it('without a subscription: shows the banner and disables adding products', () => {
+    api.getMerchantStores.mockReturnValue(of([{ ...storesResponse[0], subscription_active: false }]));
+    const fixture = TestBed.createComponent(MerchantDashboardComponent);
+    fixture.detectChanges();
+    (fixture.componentInstance as any).activeTab.set('products');
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(fixture.componentInstance.currentStore.subscriptionActive).toBe(false);
+    expect(el.querySelector('.subscription-banner')?.textContent).toContain('الاشتراك');
+    const add = [...el.querySelectorAll('button')].find((b) => b.textContent?.includes('إضافة صنف جديد')) as HTMLButtonElement;
+    expect(add.disabled).toBe(true);
+  });
+
+  it('with a subscription: no banner and adding is enabled', () => {
+    const fixture = TestBed.createComponent(MerchantDashboardComponent);
+    fixture.detectChanges();
+    (fixture.componentInstance as any).activeTab.set('products');
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.subscription-banner')).toBeNull();
+    const add = [...el.querySelectorAll('button')].find((b) => b.textContent?.includes('إضافة صنف جديد')) as HTMLButtonElement;
+    expect(add.disabled).toBe(false);
   });
 });

@@ -17,6 +17,9 @@ import { ApiService } from '../../../core/services/api.service';
       </div>
       <div class="preview-banner" role="alert" *ngIf="actionError">{{ actionError }}</div>
       <div class="preview-banner" role="status" *ngIf="actionSuccess">{{ actionSuccess }}</div>
+      <div class="preview-banner subscription-banner" role="alert" *ngIf="!loading && !loadError && !currentStore.subscriptionActive">
+        نشاطك ظاهر في المنصة باللوجو والاسم. إضافة الأطباق والمنتجات بتتفتح بعد تفعيل الاشتراك، كلّم الإدارة لتفعيله.
+      </div>
 
       <!-- Header -->
       <div class="dash-header">
@@ -281,7 +284,7 @@ import { ApiService } from '../../../core/services/api.service';
                 اضغط على زر التوفر لتحديد الصنف كـ (خلصان) بدون حذفه من القائمة
               </p>
             </div>
-            <button class="btn btn-primary" (click)="showNewProductModal.set(true)">
+            <button class="btn btn-primary" [disabled]="!currentStore.subscriptionActive" (click)="showNewProductModal.set(true)">
               + إضافة صنف جديد
             </button>
           </div>
@@ -1129,6 +1132,7 @@ import { ApiService } from '../../../core/services/api.service';
         cursor: pointer;
         border: none;
       }
+      .btn:disabled { opacity: 0.5; cursor: not-allowed; }
       .btn-primary {
         background: var(--color-primary);
         color: #fff;
@@ -1590,6 +1594,7 @@ export class MerchantDashboardComponent implements OnInit {
     name: '',
     type: 'restaurant',
     is_accepting_orders: false,
+    subscriptionActive: true,
   };
 
   newProduct = {
@@ -1629,6 +1634,7 @@ export class MerchantDashboardComponent implements OnInit {
           name: store.name,
           type: store.type,
           is_accepting_orders: store.is_accepting_orders,
+          subscriptionActive: store.subscription_active === true,
         };
         this.loadBranches();
         this.loadProducts();

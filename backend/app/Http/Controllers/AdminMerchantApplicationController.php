@@ -34,6 +34,9 @@ class AdminMerchantApplicationController extends Controller
                 'address' => $a->address,
                 'has_branches' => $a->has_branches,
                 'area_name' => $a->area_name,
+                'opens_at' => $a->opens_at,
+                'closes_at' => $a->closes_at,
+                'commercial_register' => $a->commercial_register,
                 'extra_branches' => $a->branches->map(fn ($b) => ['name' => $b->name, 'address' => $b->address, 'phone' => $b->phone])->values(),
                 'logo_url' => $a->logo_data ? '/api/pending-businesses/'.$a->id.'/logo' : null,
                 'status' => $a->status,
@@ -76,6 +79,10 @@ class AdminMerchantApplicationController extends Controller
                 'is_active' => true,
                 'is_accepting_orders' => true,
                 'logo_data' => $application->logo_data,
+                'working_hours' => $application->opens_at && $application->closes_at
+                    ? ['from' => $application->opens_at, 'to' => $application->closes_at]
+                    : null,
+                'commercial_register' => $application->commercial_register,
             ]);
 
             Branch::create([

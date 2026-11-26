@@ -207,6 +207,15 @@ describe('BusinessOnboardingComponent', () => {
     expect(el.textContent).toContain('أيوه عندي فروع');
   });
 
+  it('asks for opening hours, an optional commercial register, and says the phone is admin-only', () => {
+    const { c, el } = build();
+    expect(el.querySelectorAll('input[type="time"]').length).toBe(2);
+    expect(el.textContent).toContain('مواعيد العمل');
+    expect(el.textContent).toContain('السجل التجاري (اختياري)');
+    expect(el.textContent).toContain('بيظهر للإدارة بس');
+    expect(c.opensAt).toBe('');
+  });
+
   it('shows empty required errors on submit and never calls the API', () => {
     const { f, c, el } = build();
     c.submit();

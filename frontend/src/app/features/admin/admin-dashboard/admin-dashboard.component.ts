@@ -125,6 +125,8 @@ import { squareLogoFromFile } from '../../../core/utils/logo-image';
                 <th>المتجر</th>
                 <th>النوع</th>
                 <th>المالك</th>
+                <th>تليفون النشاط</th>
+                <th>الاشتراك</th>
                 <th>الحالة</th>
                 <th>الإجراء</th>
               </tr>
@@ -136,6 +138,18 @@ import { squareLogoFromFile } from '../../../core/utils/logo-image';
                 </td>
                 <td>{{ s.type === 'restaurant' ? 'مطعم' : 'بقالة' }}</td>
                 <td>{{ s.owner }} ({{ s.phone }})</td>
+                <td class="ltr" dir="ltr">{{ s.businessPhone || '-' }}</td>
+                <td>
+                  <span class="status-tag sub-tag" [class.active]="s.subscriptionActive">{{
+                    s.subscriptionActive
+                      ? (s.subscriptionEnds ? 'شغال لحد ' + s.subscriptionEnds : 'شغال بدون نهاية')
+                      : 'غير مفعّل'
+                  }}</span>
+                  <button class="btn btn-sm btn-outline" (click)="activateSubscription(s)">
+                    {{ s.subscriptionActive ? 'تعديل' : 'تفعيل الاشتراك' }}
+                  </button>
+                  <button *ngIf="s.subscriptionActive" class="btn btn-sm btn-danger" (click)="endSubscription(s)">إنهاء</button>
+                </td>
                 <td>
                   <span class="status-tag" [class.active]="s.active">{{
                     s.active ? 'نشط' : 'متوقف'
@@ -321,7 +335,11 @@ import { squareLogoFromFile } from '../../../core/utils/logo-image';
                 <td>{{ req.type === 'restaurant' ? t.admin.stores.typeRestaurant : t.admin.stores.typeGrocery }}</td>
                 <td>{{ req.area_name }}</td>
                 <td class="ltr">{{ req.phone }}</td>
-                <td>{{ req.address }}</td>
+                <td>
+                  {{ req.address }}
+                  <div *ngIf="req.opens_at"><small>مواعيد العمل: {{ req.opens_at }} - {{ req.closes_at }}</small></div>
+                  <div *ngIf="req.commercial_register"><small>سجل تجاري: <span class="ltr">{{ req.commercial_register }}</span></small></div>
+                </td>
                 <td>
                   {{ req.has_branches ? t.admin.joinRequests.yes : t.admin.joinRequests.no }}
                   <div *ngFor="let br of req.extra_branches || []" class="extra-branch">
@@ -1788,6 +1806,9 @@ export class AdminDashboardComponent implements OnInit {
           active: !!s.is_active,
           is_frozen: !!s.ai_frozen,
           freeze_reason: s.ai_freeze_reason ?? '',
+          businessPhone: s.branches?.[0]?.phone ?? '',
+          subscriptionActive: !!s.subscription_active,
+          subscriptionEnds: s.subscription_ends_at ?? '',
         }));
         this.availableBranches = stores.flatMap((s: any) =>
           (s.branches ?? []).map((b: any) => ({ id: b.id, name: b.name, storeName: s.name })),
@@ -2073,6 +2094,48 @@ export class AdminDashboardComponent implements OnInit {
           this.cdr.markForCheck();
         },
       });
+  }
+
+  activateSubscription(store: any) {
+    const ends = prompt(
+      'تاريخ نهاية الاشتراك (مثال 2026-12-31). سيبه فاضي لو من غير نهاية:',
+      store.subscriptionEnds || '',
+    );
+    if (ends === null) return;
+    const endsAt = ends.trim();
+    if (endsAt && !/^\d{4}-\d{2}-\d{2}$/.test(endsAt)) {
+      this.actionError = 'اكتب التاريخ بالشكل ده: 2026-12-31';
+      this.cdr.markForCheck();
+      return;
+    }
+    this.actionError = '';
+    this.api.setStoreSubscription(store.id, { active: true, ends_at: endsAt || null }).subscribe({
+      next: (s) => {
+        store.subscriptionActive = !!s.subscription_active;
+        store.subscriptionEnds = s.subscription_ends_at ?? '';
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.actionError = err?.message || 'تعذر تفعيل الاشتراك';
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  endSubscription(store: any) {
+    if (!confirm('إنهاء اشتراك ' + store.name + '؟ هيفضل ظاهر بس مش هيقدر يضيف أطباق.')) return;
+    this.actionError = '';
+    this.api.setStoreSubscription(store.id, { active: false }).subscribe({
+      next: () => {
+        store.subscriptionActive = false;
+        store.subscriptionEnds = '';
+        this.cdr.markForCheck();
+      },
+      error: (err: { message?: string }) => {
+        this.actionError = err?.message || 'تعذر إنهاء الاشتراك';
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   toggleStoreStatus(store: any) {

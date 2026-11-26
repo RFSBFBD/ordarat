@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'firebase.auth' => FirebaseAuthMiddleware::class,
             'role' => EnsureRoleMiddleware::class,
+            'subscription' => \App\Http\Middleware\EnsureActiveSubscription::class,
             'throttle' => ThrottleRequests::class,
         ]);
     })

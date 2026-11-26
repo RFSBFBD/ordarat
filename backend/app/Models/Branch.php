@@ -32,6 +32,41 @@ class Branch extends Model
         'working_hours' => 'array',
     ];
 
+    /**
+     * The business phone is for the admin only. Customers, visitors and other
+     * businesses never get it in an API response. A merchant or branch manager
+     * still sees the phone of their own store or branch.
+     */
+    public function attributesToArray(): array
+    {
+        $attributes = parent::attributesToArray();
+
+        if (! $this->phoneVisibleToViewer()) {
+            unset($attributes['phone']);
+        }
+
+        return $attributes;
+    }
+
+    protected function phoneVisibleToViewer(): bool
+    {
+        $user = request()?->user();
+        if (! $user) {
+            return false;
+        }
+        if ($user->isAdmin()) {
+            return true;
+        }
+        if ($user->isMerchant()) {
+            return $user->stores->contains('id', $this->store_id);
+        }
+        if ($user->isBranchManager()) {
+            return $user->managedBranch()?->id === $this->id;
+        }
+
+        return false;
+    }
+
     public function store(): BelongsTo
     {
         return $this->belongsTo(Store::class);

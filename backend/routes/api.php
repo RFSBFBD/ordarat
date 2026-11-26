@@ -65,6 +65,7 @@ Route::middleware('firebase.auth')->group(function () {
         Route::get('/stores', [AdminStoreController::class, 'index']);
         Route::post('/stores', [AdminStoreController::class, 'store']);
         Route::patch('/stores/{store}/status', [AdminStoreController::class, 'toggleStatus']);
+        Route::patch('/stores/{store}/subscription', [AdminStoreController::class, 'updateSubscription']);
 
         Route::get('/orders', [AdminOrderController::class, 'index']);
         Route::patch('/orders/{order}/status', [AdminOrderController::class, 'updateStatus']);
@@ -126,27 +127,27 @@ Route::middleware('firebase.auth')->group(function () {
 
         // Categories
         Route::get('/stores/{store}/categories', [MerchantCategoryController::class, 'index']);
-        Route::post('/stores/{store}/categories', [MerchantCategoryController::class, 'store']);
-        Route::put('/stores/{store}/categories/{category}', [MerchantCategoryController::class, 'update']);
+        Route::post('/stores/{store}/categories', [MerchantCategoryController::class, 'store'])->middleware('subscription');
+        Route::put('/stores/{store}/categories/{category}', [MerchantCategoryController::class, 'update'])->middleware('subscription');
         Route::delete('/stores/{store}/categories/{category}', [MerchantCategoryController::class, 'destroy']);
 
         // Products
         Route::get('/stores/{store}/products', [MerchantProductController::class, 'index']);
-        Route::post('/stores/{store}/products', [MerchantProductController::class, 'store']);
-        Route::put('/stores/{store}/products/{product}', [MerchantProductController::class, 'update']);
+        Route::post('/stores/{store}/products', [MerchantProductController::class, 'store'])->middleware('subscription');
+        Route::put('/stores/{store}/products/{product}', [MerchantProductController::class, 'update'])->middleware('subscription');
         Route::patch('/stores/{store}/products/{product}/toggle-availability', [MerchantProductController::class, 'toggleAvailability']);
-        Route::post('/stores/{store}/products/{product}/upload-image', [MerchantProductController::class, 'uploadImage']);
+        Route::post('/stores/{store}/products/{product}/upload-image', [MerchantProductController::class, 'uploadImage'])->middleware('subscription');
 
         // Orders
         Route::get('/stores/{store}/orders', [MerchantOrderController::class, 'index']);
         Route::patch('/stores/{store}/orders/{order}/status', [MerchantOrderController::class, 'updateStatus']);
 
         // Store Owner AI Tools (Menu OCR Draft & Illustrative Images)
-        Route::post('/stores/{store}/ai/ocr-menu', [MerchantAiController::class, 'extractMenu']);
+        Route::post('/stores/{store}/ai/ocr-menu', [MerchantAiController::class, 'extractMenu'])->middleware('subscription');
         Route::get('/stores/{store}/ai/menu-drafts', [MerchantAiController::class, 'listMenuDrafts']);
         Route::patch('/stores/{store}/ai/menu-draft-items/{item}', [MerchantAiController::class, 'updateDraftItem']);
-        Route::post('/stores/{store}/ai/menu-drafts/{draft}/import', [MerchantAiController::class, 'importDraft']);
-        Route::post('/stores/{store}/ai/generate-product-image', [MerchantAiController::class, 'generateProductImage']);
+        Route::post('/stores/{store}/ai/menu-drafts/{draft}/import', [MerchantAiController::class, 'importDraft'])->middleware('subscription');
+        Route::post('/stores/{store}/ai/generate-product-image', [MerchantAiController::class, 'generateProductImage'])->middleware('subscription');
         Route::post('/stores/{store}/ai/images/{image}/approve', [MerchantAiController::class, 'approveImage']);
     });
 

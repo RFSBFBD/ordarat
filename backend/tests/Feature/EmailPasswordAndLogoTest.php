@@ -124,6 +124,8 @@ class EmailPasswordAndLogoTest extends TestCase
             'has_branches' => false,
             'area_name' => 'وسط البلد',
             'logo' => self::logoDataUrl(),
+            'opens_at' => '09:00',
+            'closes_at' => '23:00',
         ], $over);
     }
 

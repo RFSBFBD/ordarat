@@ -100,6 +100,8 @@ class OnboardingFlowTest extends TestCase
             'has_branches' => false,
             'area_name' => 'وسط البلد',
             'logo' => \Tests\TestCase::logoDataUrl(),
+            'opens_at' => '09:00',
+            'closes_at' => '23:00',
         ]);
 
         $response->assertStatus(201)
@@ -128,6 +130,8 @@ class OnboardingFlowTest extends TestCase
             'has_branches' => true,
             'area_name' => 'وسط البلد',
             'logo' => \Tests\TestCase::logoDataUrl(),
+            'opens_at' => '09:00',
+            'closes_at' => '23:00',
             'branches' => [
                 ['name' => 'فرع الحميدات', 'address' => 'الحميدات', 'phone' => '01112345678', 'latitude' => 26.17, 'longitude' => 32.72],
                 ['name' => 'فرع المحطة', 'address' => 'شارع المحطة', 'latitude' => 26.16, 'longitude' => 32.71],
@@ -159,6 +163,8 @@ class OnboardingFlowTest extends TestCase
             'has_branches' => true,
             'area_name' => 'وسط البلد',
             'logo' => \Tests\TestCase::logoDataUrl(),
+            'opens_at' => '09:00',
+            'closes_at' => '23:00',
         ];
         $this->actingAs($user)->postJson('/api/onboarding/merchant-application', $base)
             ->assertStatus(422)->assertJsonPath('error.code', 'BRANCHES_REQUIRED');

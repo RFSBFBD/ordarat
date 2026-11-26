@@ -18,6 +18,10 @@ export interface ApiStore {
   is_active: boolean;
   is_accepting_orders: boolean;
   working_hours?: { from?: string; to?: string } | null;
+  subscription_active?: boolean;
+  subscription_starts_at?: string | null;
+  subscription_ends_at?: string | null;
+  commercial_register?: string | null;
   branches?: ApiBranch[];
 }
 
@@ -157,6 +161,10 @@ export interface MerchantApplicationRequest {
   area_name: string;
   /** PNG/JPEG/WebP data URL, already downscaled in the browser. */
   logo: string;
+  /** HH:MM, 24 hours. */
+  opens_at: string;
+  closes_at: string;
+  commercial_register?: string | null;
   branches?: { name: string; address: string; phone: string | null; latitude: number; longitude: number }[];
 }
 
@@ -168,6 +176,9 @@ export interface AdminMerchantApplication {
   address: string;
   has_branches: boolean;
   area_name: string;
+  opens_at?: string | null;
+  closes_at?: string | null;
+  commercial_register?: string | null;
   extra_branches?: { name: string; address: string; phone: string | null }[];
   logo_url?: string | null;
   status: 'pending' | 'approved' | 'rejected';
@@ -504,6 +515,16 @@ export class ApiService {
       .pipe(this.unwrap<any>());
   }
 
+  /** Manual subscription: no payment, the admin picks the dates (or ends it). */
+  setStoreSubscription(
+    storeId: number,
+    body: { active: boolean; starts_at?: string; ends_at?: string | null },
+  ): Observable<any> {
+    return this.http
+      .patch<Envelope<any>>(`${this.base}/admin/stores/${storeId}/subscription`, body)
+      .pipe(this.unwrap<any>());
+  }
+
   toggleAdminStoreStatus(storeId: number, isActive: boolean, reason: string): Observable<any> {
     return this.http
       .patch<Envelope<any>>(`${this.base}/admin/stores/${storeId}/status`, {
@@ -684,6 +705,7 @@ export interface MerchantStore {
   is_active: boolean;
   is_accepting_orders: boolean;
   working_hours: { from?: string; to?: string } | null;
+  subscription_active?: boolean;
   branches?: MerchantBranch[];
 }
 

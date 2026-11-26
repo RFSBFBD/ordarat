@@ -136,6 +136,9 @@ class OnboardingController extends Controller
             'has_branches' => 'required|boolean',
             'area_name' => 'required|string|max:120',
             'logo' => 'required|string',
+            'opens_at' => ['required', 'regex:/^([01][0-9]|2[0-3]):[0-5][0-9]$/'],
+            'closes_at' => ['required', 'regex:/^([01][0-9]|2[0-3]):[0-5][0-9]$/'],
+            'commercial_register' => 'nullable|string|max:60',
             'branches' => 'nullable|array|max:10',
             'branches.*.name' => 'required|string|max:120',
             'branches.*.address' => 'required|string|max:255',
@@ -154,6 +157,10 @@ class OnboardingController extends Controller
             'address.required' => 'اكتب عنوان النشاط',
             'area_name.required' => 'اكتب المنطقة اللي نشاطك فيها داخل قنا',
             'logo.required' => 'ارفع لوجو النشاط',
+            'opens_at.required' => 'اكتب ميعاد الفتح',
+            'opens_at.regex' => 'ميعاد الفتح غير صحيح',
+            'closes_at.required' => 'اكتب ميعاد الإغلاق',
+            'closes_at.regex' => 'ميعاد الإغلاق غير صحيح',
         ]);
 
         $extraBranches = $validated['branches'] ?? [];
@@ -210,6 +217,9 @@ class OnboardingController extends Controller
             'has_branches' => $validated['has_branches'],
             'area_name' => $validated['area_name'],
             'logo_data' => $validated['logo'],
+            'opens_at' => $validated['opens_at'],
+            'closes_at' => $validated['closes_at'],
+            'commercial_register' => $validated['commercial_register'] ?? null,
             'status' => MerchantApplication::STATUS_PENDING,
             ]);
 

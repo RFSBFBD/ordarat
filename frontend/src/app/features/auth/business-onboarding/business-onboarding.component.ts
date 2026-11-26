@@ -132,6 +132,24 @@ interface BranchDraft {
         </div>
 
         <div class="form-group">
+          <label class="label">مواعيد العمل *</label>
+          <div class="hours-row">
+            <label class="hours-field">من
+              <input type="time" name="opensAt" [(ngModel)]="opensAt" class="input-field" dir="ltr" />
+            </label>
+            <label class="hours-field">إلى
+              <input type="time" name="closesAt" [(ngModel)]="closesAt" class="input-field" dir="ltr" />
+            </label>
+          </div>
+          <span *ngIf="showErrors && (!opensAt || !closesAt)" class="error-text">اكتب ميعاد الفتح والإغلاق</span>
+        </div>
+
+        <div class="form-group">
+          <label class="label">رقم السجل التجاري (اختياري)</label>
+          <input type="text" name="commercialRegister" [(ngModel)]="commercialRegister" class="input-field" dir="ltr" maxlength="60" />
+        </div>
+
+        <div class="form-group">
           <label class="label">{{ t.businessOnboarding.branchesLabel }} *</label>
           <div class="choices-row">
             <button
@@ -236,6 +254,9 @@ export class BusinessOnboardingComponent implements OnInit {
   phone = '';
   address = '';
   hasBranches: boolean | null = null;
+  opensAt = '';
+  closesAt = '';
+  commercialRegister = '';
   showErrors = false;
   isLocating = false;
   isSaving = false;
@@ -375,7 +396,7 @@ export class BusinessOnboardingComponent implements OnInit {
     this.submitError = '';
     if (
       !this.logoData || !this.businessName || !this.type || !this.isPhoneValid() ||
-      !this.neighborhood.trim() || !this.address || this.hasBranches === null || !this.hasLocation ||
+      !this.neighborhood.trim() || !this.address || !this.opensAt || !this.closesAt || this.hasBranches === null || !this.hasLocation ||
       (this.hasBranches === true && (this.branches.length === 0 || !this.branches.every((b) => this.isBranchValid(b))))
     ) {
       return;
@@ -392,6 +413,9 @@ export class BusinessOnboardingComponent implements OnInit {
         has_branches: this.hasBranches === true,
         area_name: this.neighborhood.trim(),
         logo: this.logoData,
+        opens_at: this.opensAt,
+        closes_at: this.closesAt,
+        commercial_register: this.commercialRegister.trim() || null,
         branches:
           this.hasBranches === true
             ? this.branches.map((b) => ({

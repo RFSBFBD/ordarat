@@ -142,6 +142,8 @@ export const ONBOARDING_STYLES = `
     color: var(--color-text-muted);
     border: 1px solid var(--color-border);
   }
+  .hours-row { display: flex; gap: 0.75rem; }
+  .hours-field { flex: 1; display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.9rem; }
   .choices-row {
     display: flex;
     gap: 0.75rem;

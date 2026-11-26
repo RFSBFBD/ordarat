@@ -87,6 +87,7 @@ class AdminAnalyticsAndAiTest extends TestCase
             'type' => 'restaurant',
             'owner_id' => $this->merchant->id,
             'is_active' => true,
+            'subscription_starts_at' => now()->subDay()->toDateString(),
         ]);
         $this->merchant->stores()->attach($this->store->id);
 
@@ -96,6 +97,7 @@ class AdminAnalyticsAndAiTest extends TestCase
             'type' => 'grocery',
             'owner_id' => $this->otherMerchant->id,
             'is_active' => true,
+            'subscription_starts_at' => now()->subDay()->toDateString(),
         ]);
         $this->otherMerchant->stores()->attach($this->otherStore->id);
 
